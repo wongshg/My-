@@ -187,7 +187,6 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const deleteStage = (stageId: string) => {
-      // Fix: Removed setTimeout which was causing state issues. Use direct update.
       if(!confirm("确定删除此阶段及其所有任务吗？")) return;
       
       const newStages = matter.stages.filter(s => s.id !== stageId);
@@ -304,9 +303,11 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-4 h-16 flex items-center justify-between shrink-0 z-20">
+    // Outer container scrolls
+    <div className="h-screen overflow-y-auto bg-white scroll-smooth">
+        
+        {/* Sticky Frosted Header */}
+        <header className="sticky top-0 z-50 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 supports-[backdrop-filter]:bg-white/60 transition-all">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
               onClick={goMobileBack}
@@ -317,17 +318,11 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-200"></div>
              
              {!isTemplateMode && (
-                 // DESIGN UPDATE: Premium Blue Gradient Background for Logo
-                <div className="flex items-center justify-center h-8 w-auto px-2 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 shadow-sm mr-2 ring-1 ring-blue-700/50">
-                    <img 
-                        src="/logo.png" 
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                        }}
-                        alt="Logo" 
-                        className="h-4 object-contain brightness-0 invert" 
-                    />
-                    <span className="ml-1 text-white font-bold tracking-tight text-xs">Opus</span>
+                 // DESIGN UPDATE: Minimalist brand for MatterBoard
+                <div className="flex items-center gap-2 mr-2 shrink-0 group">
+                     <div className="h-6 w-6 bg-slate-900 rounded-md flex items-center justify-center shadow-sm">
+                        <span className="text-white font-bold text-[10px] tracking-tighter">Op</span>
+                     </div>
                 </div>
              )}
              
@@ -335,7 +330,8 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col gap-1 w-full max-w-md">
                     <input 
                       autoFocus
-                      className="font-bold text-base text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent"
+                      // Updated for Light Header
+                      className="font-bold text-base text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent placeholder-slate-400"
                       value={editTitleVal}
                       onChange={(e) => setEditTitleVal(e.target.value)}
                       onBlur={saveHeaderInfo}
@@ -344,7 +340,7 @@ const MatterBoard: React.FC<Props> = ({
                     />
                     {isTemplateMode && (
                         <input 
-                          className="text-xs text-slate-500 border-b border-blue-300 focus:outline-none bg-transparent"
+                          className="text-xs text-slate-500 border-b border-blue-300/50 focus:outline-none bg-transparent"
                           value={editDescVal}
                           onChange={(e) => setEditDescVal(e.target.value)}
                           onBlur={saveHeaderInfo}
@@ -369,6 +365,7 @@ const MatterBoard: React.FC<Props> = ({
               )}
           </div>
 
+          {/* Update: Button colors for Light Header */}
           <div className="flex items-center gap-2">
             {!isTemplateMode && (
                 <>
@@ -406,7 +403,7 @@ const MatterBoard: React.FC<Props> = ({
                     <button 
                         onClick={triggerAI}
                         disabled={isAnalyzing}
-                        className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-all"
+                        className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-all"
                     >
                     <Sparkles size={14} /> <span className="hidden md:inline">{isAnalyzing ? '分析中...' : '智能简报'}</span>
                     </button>
@@ -416,7 +413,7 @@ const MatterBoard: React.FC<Props> = ({
                         onUpdate({...matter, archived: isArchived});
                         if(isArchived) onBack();
                         }}
-                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                         title={matter.archived ? "已归档" : "归档"}
                     >
                         <Archive size={18} />
@@ -440,11 +437,12 @@ const MatterBoard: React.FC<Props> = ({
         )}
 
         {/* 3-Column Layout (Responsive Drill Down) */}
-        <div className="flex-1 flex overflow-hidden relative">
+        {/* Adjusted height calculation to account for the sticky header in the flow */}
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] relative">
             
             {/* Col 1: Stages */}
             <div className={`w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col shrink-0 ${getColVisibility('STAGES')} md:flex`}>
-                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50">
+                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-16 md:static z-10">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段 (Stages)</span>
                     <button 
                       onClick={() => setIsAddingStage(true)} 
@@ -455,7 +453,7 @@ const MatterBoard: React.FC<Props> = ({
                     </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+                <div className="flex-1 px-2 py-2 space-y-0.5">
                     {matter.stages.map((stage, idx) => {
                         const isSelected = stage.id === selectedStageId;
                         const isEditing = editingStageId === stage.id;
@@ -503,8 +501,6 @@ const MatterBoard: React.FC<Props> = ({
                                 <ChevronRight size={16} className="text-slate-300 md:hidden" />
 
                                 {!isEditing && (
-                                    // Fix: Removed 'hidden md:flex' so buttons are available on mobile.
-                                    // Adjusted opacity logic: Desktop (md) -> opacity-0 hover:opacity-100. Mobile -> opacity-100 (always visible).
                                     <div className="flex items-center gap-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white/50 rounded ml-1">
                                         <button 
                                             type="button"
@@ -569,7 +565,7 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* Col 2: Task List */}
             <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex-col shrink-0 ${getColVisibility('TASKS')} md:flex`}>
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10 sticky top-16 md:static">
                     <h2 className="font-bold text-slate-800 truncate max-w-[160px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
                     </h2>
@@ -582,7 +578,7 @@ const MatterBoard: React.FC<Props> = ({
                     </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1">
                     {!activeStage ? (
                         <div className="p-8 text-center text-slate-400 text-sm">请先选择左侧阶段</div>
                     ) : activeStage.tasks.length === 0 ? (

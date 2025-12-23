@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
-  ArrowRight, AlertCircle, Clock, PieChart, Activity, CheckSquare, X
+  ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive
 } from 'lucide-react';
 
 interface Props {
@@ -21,10 +21,10 @@ interface AttentionMatterGroup {
   daysLeft?: number;
 }
 
-// Reusable Matter Card Component (now handles display logic internally)
+// Reusable Matter Card Component
 const MatterCard: React.FC<{
   m: Matter;
-  type: 'normal' | 'completed';
+  type: 'normal' | 'completed' | 'archived';
   onSelectMatter: (id: string) => void;
   onDeleteMatter: (id: string) => void;
   hasAttention: boolean;
@@ -35,19 +35,22 @@ const MatterCard: React.FC<{
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
   const daysLeft = m.dueDate ? Math.ceil((m.dueDate - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
+  // Visual style based on type
+  let containerClass = "bg-white border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-md";
+  if (type === 'completed') {
+    containerClass = "bg-emerald-50/50 border-emerald-100 hover:border-emerald-300 shadow-sm";
+  } else if (type === 'archived') {
+    containerClass = "bg-slate-50 border-slate-100 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all";
+  }
+
   return (
     <div 
       onClick={() => onSelectMatter(m.id)}
       className={`
-        bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group relative flex flex-col h-full
-        ${type === 'completed' ? 'border-slate-100 opacity-70 bg-slate-50' : 'border-slate-200 hover:border-blue-300'}
+        p-5 rounded-xl border cursor-pointer group relative flex flex-col h-full transition-all duration-300
+        ${containerClass}
       `}
     >
-      {/* 
-         Mobile: opacity-100 (always visible). 
-         Desktop (md): opacity-0, hover:opacity-100.
-         Added z-20 and larger touch target.
-      */}
       <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-20">
          <button 
             type="button"
@@ -57,7 +60,7 @@ const MatterCard: React.FC<{
               e.stopPropagation(); 
               onDeleteMatter(m.id); 
             }}
-            className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors bg-white/80 md:bg-transparent shadow-sm md:shadow-none border md:border-none border-slate-100"
+            className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors bg-white/80 shadow-sm border border-slate-100"
             title="删除事项"
          >
             <Trash2 size={16} />
@@ -68,9 +71,14 @@ const MatterCard: React.FC<{
          <div className="flex-1 min-w-0 pr-6">
             <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-slate-800 truncate text-base">{m.title}</h3>
-                {hasAttention && type !== 'completed' && (
+                {hasAttention && type === 'normal' && (
                     <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                         <AlertCircle size={10} /> 待关注
+                    </span>
+                )}
+                {type === 'archived' && (
+                    <span className="shrink-0 text-[10px] font-bold bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full">
+                        已归档
                     </span>
                 )}
             </div>
@@ -83,15 +91,15 @@ const MatterCard: React.FC<{
             <span className="text-slate-500">总体进度</span>
             <span className="font-bold text-slate-700">{progress}%</span>
         </div>
-        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-          <div className={`h-1.5 rounded-full ${type === 'completed' ? 'bg-emerald-500' : 'bg-slate-800'}`} style={{ width: `${progress}%` }}></div>
+        <div className="w-full bg-slate-200/50 rounded-full h-1.5 overflow-hidden">
+          <div className={`h-1.5 rounded-full ${type === 'completed' ? 'bg-emerald-500' : type === 'archived' ? 'bg-slate-400' : 'bg-slate-800'}`} style={{ width: `${progress}%` }}></div>
         </div>
         
         <div className="flex justify-between items-center text-xs text-slate-500">
            <div className="flex items-center gap-1">
              <CheckCircle size={12}/> {completed}/{total} 任务
            </div>
-           {m.dueDate && (
+           {m.dueDate && type !== 'archived' && (
              <div className={`flex items-center gap-1 ${daysLeft! < 0 ? 'text-red-500 font-bold' : daysLeft! <= 7 ? 'text-amber-600 font-bold' : ''}`}>
                 <Calendar size={12} /> 
                 {daysLeft! < 0 ? `逾期 ${Math.abs(daysLeft!)} 天` : daysLeft === 0 ? '今天到期' : `${daysLeft} 天后`}
@@ -111,7 +119,7 @@ const AttentionGroupCard: React.FC<{
 }> = ({ group, onSelectMatter, onJumpToTask }) => {
   return (
       <div 
-        className="bg-white rounded-xl border border-amber-200 shadow-sm flex flex-col h-full relative overflow-hidden"
+        className="bg-white rounded-xl border border-amber-200 shadow-sm flex flex-col h-full relative overflow-hidden hover:shadow-md transition-all"
       >
          <div className="bg-amber-50/50 p-3 border-b border-amber-100 flex justify-between items-start cursor-pointer hover:bg-amber-100/50 transition-colors" onClick={() => onSelectMatter(group.matter.id)}>
             <div>
@@ -183,27 +191,27 @@ const Dashboard: React.FC<Props> = ({
   onDeleteMatter
 }) => {
   const now = Date.now();
-  const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | null>(null);
+  const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | 'archived' | null>(null);
 
+  // Separate Active (Not Archived) and Archived
   const activeMatters = matters.filter(m => !m.archived);
-  
-  // Logic to determine "Completed"
-  const completedMatters = matters.filter(m => 
-    m.archived || 
-    (m.stages.length > 0 && m.stages.every(s => s.tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.SKIPPED)))
+  const archivedMatters = matters.filter(m => m.archived);
+
+  // From Active Matters, separate by completion status for Stats logic
+  const completedActiveMatters = activeMatters.filter(m => 
+    m.stages.length > 0 && m.stages.every(s => s.tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.SKIPPED))
   );
   
-  const activeIncompleteMatters = activeMatters.filter(m => !completedMatters.some(cm => cm.id === m.id));
+  const inProgressMatters = activeMatters.filter(m => !completedActiveMatters.some(cm => cm.id === m.id));
 
-  // --- Group Attention Logic ---
+  // --- Group Attention Logic (Only for In Progress Matters) ---
   const attentionGroups: AttentionMatterGroup[] = [];
 
-  activeIncompleteMatters.forEach(m => {
+  inProgressMatters.forEach(m => {
     const tasks: { task: Task; stage: Stage; type: 'blocked' | 'exception' }[] = [];
     let isOverdue = false;
     let daysLeft = undefined;
 
-    // Check overdue
     if (m.dueDate) {
         daysLeft = Math.ceil((m.dueDate - now) / (1000 * 60 * 60 * 24));
         if (daysLeft <= 7) {
@@ -211,7 +219,6 @@ const Dashboard: React.FC<Props> = ({
         }
     }
 
-    // Collect urgent tasks
     m.stages.forEach(s => {
         s.tasks.forEach(t => {
             if (t.status === TaskStatus.BLOCKED) {
@@ -232,20 +239,19 @@ const Dashboard: React.FC<Props> = ({
     }
   });
 
-  // --- Statistics Logic (Count Matters) ---
-  const statInProgressMatters = activeIncompleteMatters.length;
+  // --- Statistics Logic ---
+  const statInProgressMatters = inProgressMatters.length;
   const statUrgentMatters = attentionGroups.length;
-  const statCompletedMatters = completedMatters.length;
-
-  // Normal Progress Matters for Display (Include those with attention items, marked)
-  const normalProgressMatters = activeIncompleteMatters;
+  const statCompletedMatters = completedActiveMatters.length;
+  const statArchivedMatters = archivedMatters.length;
 
   // --- Modal List Logic ---
   const getModalList = () => {
       switch(activeStatModal) {
-          case 'progress': return activeIncompleteMatters;
+          case 'progress': return inProgressMatters;
           case 'urgent': return attentionGroups.map(g => g.matter);
-          case 'completed': return completedMatters;
+          case 'completed': return completedActiveMatters;
+          case 'archived': return archivedMatters;
           default: return [];
       }
   };
@@ -254,7 +260,8 @@ const Dashboard: React.FC<Props> = ({
       switch(activeStatModal) {
           case 'progress': return '正在推进的事项清单';
           case 'urgent': return '需急需关注的事项清单';
-          case 'completed': return '已完成/归档事项清单';
+          case 'completed': return '已完成（未归档）事项清单';
+          case 'archived': return '已归档事项清单';
           default: return '';
       }
   };
@@ -264,15 +271,15 @@ const Dashboard: React.FC<Props> = ({
       const list = getModalList();
 
       return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setActiveStatModal(null)}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4 backdrop-blur-sm" onClick={() => setActiveStatModal(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h2 className="text-lg font-bold text-slate-800">{getModalTitle()}</h2>
                     <button onClick={() => setActiveStatModal(null)} className="text-slate-400 hover:text-slate-600">
                         <X size={24} />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-[#f8fafc]">
                     {list.length === 0 && <div className="text-slate-400 text-center py-10">暂无相关事项</div>}
                     {list.map(m => {
                          const allTasks = m.stages.flatMap(s => s.tasks);
@@ -284,7 +291,7 @@ const Dashboard: React.FC<Props> = ({
                              <div 
                                 key={m.id} 
                                 onClick={() => { onSelectMatter(m.id); setActiveStatModal(null); }}
-                                className="border border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer bg-white"
+                                className="border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer bg-white"
                              >
                                  <div className="flex justify-between items-start mb-2">
                                      <div>
@@ -309,142 +316,174 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 min-h-screen">
-      <header className="flex justify-between items-center mb-8">
+    // Structure changed: The outer container scrolls, header is sticky inside it
+    <div className="h-screen overflow-y-auto bg-[#f8fafc] scroll-smooth">
+      
+      {/* 
+          APPLE-STYLE STICKY HEADER 
+          - bg-white/70 + backdrop-blur-2xl provides the "liquid glass" effect 
+          - sticky top-0 keeps it at the top while content scrolls underneath
+      */}
+      <header className="sticky top-0 z-50 h-16 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 flex items-center justify-between px-6 transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
         <div className="flex items-center gap-3">
-             {/* DESIGN UPDATE: Premium Blue Gradient Background for Transparent Logo */}
-             <div className="flex items-center justify-center h-12 w-auto px-4 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-md ring-1 ring-blue-700/50">
-                 <img 
-                    src="/logo.png" 
-                    onError={(e) => {
-                        // Fallback logic
-                        e.currentTarget.style.display = 'none'; 
-                        // If logo fails, we can show text, but for now just hide image to avoid broken icon
-                    }}
-                    alt="Opus" 
-                    className="h-7 object-contain brightness-0 invert" // Make logo white if it has transparency/black lines
-                 />
-                 {/* Fallback Text if image fails or for SEO/Visual reinforcement */}
-                 <span className="ml-2 text-white font-bold tracking-tight text-lg">Opus</span>
+             {/* DESIGN UPDATE: Minimalist "Opus" branding */}
+             <div className="flex items-center gap-2 group cursor-default">
+                 <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:scale-105">
+                     <span className="text-white font-bold text-sm tracking-tighter">Op</span>
+                 </div>
+                 <span className="text-xl font-bold text-slate-800 tracking-tight">Opus</span>
              </div>
         </div>
+        
         <div className="flex items-center gap-3">
           <button 
              onClick={onOpenTemplateManager}
-             className="flex items-center gap-2 text-slate-600 px-4 py-2.5 rounded-lg hover:bg-slate-100 transition-colors font-medium text-sm border border-slate-200"
+             className="flex items-center gap-2 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors font-medium text-sm border border-slate-200/50 bg-white/50"
           >
             <LayoutTemplate size={18} /> <span className="hidden md:inline">模板管理</span>
           </button>
           <button 
               onClick={onNewMatter}
-              className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 font-medium text-sm"
+              className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200 font-medium text-sm"
           >
               <Plus size={18} /> <span className="hidden md:inline">新建事项</span>
           </button>
         </div>
       </header>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-           <StatCard 
-             label="正在进行事项" 
-             value={statInProgressMatters} 
-             icon={Activity} 
-             color="bg-blue-500" 
-             onClick={() => setActiveStatModal('progress')}
-           />
-           <StatCard 
-             label="需急需关注事项" 
-             value={statUrgentMatters} 
-             icon={AlertCircle} 
-             color="bg-amber-500" 
-             onClick={() => setActiveStatModal('urgent')}
-           />
-           <StatCard 
-             label="已完成事项" 
-             value={statCompletedMatters} 
-             icon={CheckSquare} 
-             color="bg-emerald-500" 
-             onClick={() => setActiveStatModal('completed')}
-           />
-      </div>
-
-      <div className="space-y-10">
-        
-        {/* Section 1: Attention Needed */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
-            <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">急需关注 (Attention)</h2>
-            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{attentionGroups.length}</span>
-          </div>
-          {attentionGroups.length === 0 ? (
-             <div className="text-sm text-slate-400 pl-4 py-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-               暂无受阻或临期事项，一切正常。
-             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {attentionGroups.map((group, idx) => (
-                  <AttentionGroupCard 
-                    key={group.matter.id} 
-                    group={group}
-                    onSelectMatter={onSelectMatter}
-                    onJumpToTask={onJumpToTask}
-                  />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Section 2: In Progress */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-            <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">正在推进事项 (In Progress)</h2>
-            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{normalProgressMatters.length}</span>
-          </div>
-           {normalProgressMatters.length === 0 ? (
-             <div className="text-sm text-slate-400 pl-4 py-8 text-center bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-               暂无常规推进中的事项。
-             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {normalProgressMatters.map(m => (
-                <MatterCard 
-                  key={m.id} 
-                  m={m} 
-                  type="normal" 
-                  onSelectMatter={onSelectMatter}
-                  onDeleteMatter={onDeleteMatter}
-                  hasAttention={attentionGroups.some(ag => ag.matter.id === m.id)}
+      <div className="max-w-7xl mx-auto p-6 min-h-[calc(100vh-4rem)]">
+            
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                <StatCard 
+                    label="正在进行" 
+                    value={statInProgressMatters} 
+                    icon={Activity} 
+                    color="bg-blue-500" 
+                    onClick={() => setActiveStatModal('progress')}
                 />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Section 3: Completed/Archived */}
-        {completedMatters.length > 0 && (
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-5 bg-emerald-500 rounded-full"></div>
-              <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">已完成 / 归档</h2>
-              <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{completedMatters.length}</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 opacity-60 hover:opacity-100 transition-opacity">
-              {completedMatters.map(m => (
-                <MatterCard 
-                  key={m.id} 
-                  m={m} 
-                  type="completed" 
-                  onSelectMatter={onSelectMatter}
-                  onDeleteMatter={onDeleteMatter}
-                  hasAttention={false}
+                <StatCard 
+                    label="急需关注" 
+                    value={statUrgentMatters} 
+                    icon={AlertCircle} 
+                    color="bg-amber-500" 
+                    onClick={() => setActiveStatModal('urgent')}
                 />
-              ))}
+                <StatCard 
+                    label="已完成" 
+                    value={statCompletedMatters} 
+                    icon={CheckSquare} 
+                    color="bg-emerald-500" 
+                    onClick={() => setActiveStatModal('completed')}
+                />
+                <StatCard 
+                    label="已归档" 
+                    value={statArchivedMatters} 
+                    icon={Archive} 
+                    color="bg-slate-500" 
+                    onClick={() => setActiveStatModal('archived')}
+                />
             </div>
-          </section>
-        )}
+
+            <div className="space-y-12">
+                {/* Section 1: Attention Needed */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">急需关注 (Attention)</h2>
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span>
+                    </div>
+                    {attentionGroups.length === 0 ? (
+                        <div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 flex items-center gap-2">
+                           <CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                        {attentionGroups.map((group, idx) => (
+                            <AttentionGroupCard 
+                                key={group.matter.id} 
+                                group={group}
+                                onSelectMatter={onSelectMatter}
+                                onJumpToTask={onJumpToTask}
+                            />
+                        ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* Section 2: In Progress */}
+                <section>
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">正在推进 (In Progress)</h2>
+                    <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span>
+                </div>
+                {inProgressMatters.length === 0 ? (
+                    <div className="text-sm text-slate-400 pl-4 py-8 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                    暂无常规推进中的事项。
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {inProgressMatters.map(m => (
+                        <MatterCard 
+                        key={m.id} 
+                        m={m} 
+                        type="normal" 
+                        onSelectMatter={onSelectMatter}
+                        onDeleteMatter={onDeleteMatter}
+                        hasAttention={attentionGroups.some(ag => ag.matter.id === m.id)}
+                        />
+                    ))}
+                    </div>
+                )}
+                </section>
+
+                {/* Section 3: Completed (Active but 100% done) */}
+                {completedActiveMatters.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">已完成 (Completed)</h2>
+                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{completedActiveMatters.length}</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {completedActiveMatters.map(m => (
+                        <MatterCard 
+                        key={m.id} 
+                        m={m} 
+                        type="completed" 
+                        onSelectMatter={onSelectMatter}
+                        onDeleteMatter={onDeleteMatter}
+                        hasAttention={false}
+                        />
+                    ))}
+                    </div>
+                </section>
+                )}
+
+                {/* Section 4: Archived (New Requirement) */}
+                {archivedMatters.length > 0 && (
+                    <section className="pt-8 border-t border-slate-200/50">
+                        <div className="flex items-center gap-2 mb-4 opacity-70 hover:opacity-100 transition-opacity">
+                            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full"></div>
+                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">归档箱 (Archived)</h2>
+                            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{archivedMatters.length}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                            {archivedMatters.map(m => (
+                                <MatterCard 
+                                    key={m.id} 
+                                    m={m} 
+                                    type="archived" 
+                                    onSelectMatter={onSelectMatter}
+                                    onDeleteMatter={onDeleteMatter}
+                                    hasAttention={false}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
       </div>
 
       <StatDetailModal />
