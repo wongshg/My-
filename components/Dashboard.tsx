@@ -3,7 +3,7 @@ import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
-  Moon, Sun, Monitor
+  Moon, Sun, Monitor, Settings
 } from 'lucide-react';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   onThemeChange: (t: 'light' | 'dark' | 'system') => void;
   notifPermission: NotificationPermission;
   onRequestNotif: () => void;
+  onOpenSettings: () => void;
 }
 
 interface AttentionMatterGroup {
@@ -197,7 +198,8 @@ const Dashboard: React.FC<Props> = ({
   theme,
   onThemeChange,
   notifPermission,
-  onRequestNotif
+  onRequestNotif,
+  onOpenSettings
 }) => {
   const now = Date.now();
   const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | 'archived' | null>(null);
@@ -372,6 +374,14 @@ const Dashboard: React.FC<Props> = ({
              title="切换主题"
           >
              {getThemeIcon()}
+          </button>
+
+          <button
+             onClick={onOpenSettings}
+             className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+             title="设置与备份"
+          >
+             <Settings size={18} />
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>

@@ -121,9 +121,12 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   };
 
   const deleteMaterial = async (mat: Material) => {
-    if (mat.fileId) {
-       await deleteFileFromDB(mat.fileId);
-    }
+    // NOTE: To support templates where multiple matters might share the same file ID (cloned from template),
+    // we do NOT delete the file from IndexedDB here. We only remove the reference from this task.
+    // This effectively orphans the file in DB if no one else uses it, but prevents data loss in cloned matters.
+    // if (mat.fileId) {
+    //    await deleteFileFromDB(mat.fileId);
+    // }
     onUpdate({ ...task, materials: task.materials.filter(m => m.id !== mat.id), lastUpdated: Date.now() });
   };
 
@@ -168,9 +171,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   };
 
   const deleteFileAttachment = async (matId: string, fileId?: string) => {
-      if (fileId) {
-          await deleteFileFromDB(fileId);
-      }
+      // NOTE: Safety measure for templates. See deleteMaterial note above.
+      // if (fileId) {
+      //     await deleteFileFromDB(fileId);
+      // }
       const newMaterials = task.materials.map(m => 
           m.id === matId ? { ...m, fileId: undefined, fileName: undefined, fileType: undefined, fileSize: undefined } : m
       );

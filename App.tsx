@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Matter, Template, TaskStatus, Task, Stage } from './types';
 import { ALL_TEMPLATES } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Settings, Upload, Download } from 'lucide-react';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -180,7 +180,11 @@ const App: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [matterToTemplate, setMatterToTemplate] = useState<Matter | null>(null);
 
-  // Apply Theme
+  // Settings / Backup Modal
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Apply Theme & Update Meta Tag for Mobile Status Bar
   useEffect(() => {
      const root = window.document.documentElement;
      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -191,6 +195,14 @@ const App: React.FC = () => {
          root.classList.remove('dark');
      }
      localStorage.setItem(THEME_KEY, theme);
+
+     // Update <meta name="theme-color">
+     // Light: #f8fafc (slate-50) | Dark: #020617 (slate-950)
+     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+     if (metaThemeColor) {
+         metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+     }
+
   }, [theme]);
 
   useEffect(() => {
@@ -253,6 +265,52 @@ const App: React.FC = () => {
       setTargetTaskId(taskId);
   };
 
+  // --- Data Backup & Restore ---
+  const handleExportData = () => {
+      const data = {
+          version: 1,
+          date: new Date().toISOString(),
+          matters,
+          templates
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Orbit_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const json = JSON.parse(event.target?.result as string);
+              if (json.matters && Array.isArray(json.matters)) {
+                  setMatters(json.matters);
+                  saveMatters(json.matters);
+              }
+              if (json.templates && Array.isArray(json.templates)) {
+                  setTemplates(json.templates);
+                  saveTemplates(json.templates);
+              }
+              alert(`恢复成功！\n包含 ${json.matters?.length || 0} 个事项，${json.templates?.length || 0} 个模板。`);
+              setIsSettingsOpen(false);
+          } catch (err) {
+              alert("文件格式错误，无法导入。");
+              console.error(err);
+          }
+      };
+      reader.readAsText(file);
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+
   // --- Template Logic ---
 
   const initiateSaveTemplate = (matter: Matter) => {
@@ -264,6 +322,7 @@ const App: React.FC = () => {
   const confirmSaveTemplate = () => {
     if (!matterToTemplate || !templateName) return;
     
+    // Clean up stages but PRESERVE FILES if they exist
     const cleanStages = matterToTemplate.stages.map(s => ({
       ...s,
       tasks: s.tasks.map(t => ({
@@ -271,7 +330,11 @@ const App: React.FC = () => {
         status: TaskStatus.PENDING,
         statusNote: '',
         statusUpdates: [],
-        materials: t.materials.map(m => ({...m, isReady: false, fileId: undefined, fileName: undefined}))
+        materials: t.materials.map(m => ({
+            ...m, 
+            isReady: !!m.fileId, // Keep ready if it has a file
+            // PRESERVE FILE METADATA SO TEMPLATES CAN HAVE ATTACHMENTS
+        }))
       }))
     }));
 
@@ -327,9 +390,8 @@ const App: React.FC = () => {
               statusUpdates: [],
               materials: t.materials.map(mat => ({
                   ...mat,
-                  isReady: false,
-                  fileId: undefined,
-                  fileName: undefined
+                  isReady: !!mat.fileId, // Keep file state if file exists
+                  // Preserve fileId/fileName etc. so the template keeps the files
               }))
           }))
       }));
@@ -501,6 +563,45 @@ const App: React.FC = () => {
     );
   };
 
+  const SettingsModal = () => (
+      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                  <Settings size={20} /> 数据与备份
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                  您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。
+              </p>
+              
+              <div className="space-y-3">
+                  <button 
+                    onClick={handleExportData}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                  >
+                      <Download size={18} /> 导出备份数据 (.json)
+                  </button>
+                  
+                  <div className="relative">
+                      <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                          <Upload size={18} /> 恢复数据
+                      </button>
+                      <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        accept=".json"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        onChange={handleImportData}
+                      />
+                  </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <button onClick={() => setIsSettingsOpen(false)} className="text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm">关闭</button>
+              </div>
+          </div>
+      </div>
+  );
+
   const activeMatter = matters.find(m => m.id === activeMatterId);
 
   return (
@@ -529,10 +630,12 @@ const App: React.FC = () => {
           onThemeChange={setTheme}
           notifPermission={notifPermission}
           onRequestNotif={requestNotificationPermission}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
       )}
       
       {isNewMatterModalOpen && <NewMatterView />}
+      {isSettingsOpen && <SettingsModal />}
       
       <TemplateManagerModal 
          isOpen={isTemplateManagerOpen}
