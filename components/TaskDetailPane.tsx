@@ -393,61 +393,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
             onBlur={handleTitleBlur}
             placeholder="任务标题..."
           />
-          
-          {/* Status Buttons - Single Line / Compact */}
-          <div className="flex gap-1.5 mt-3 flex-wrap items-center">
-             {[
-               TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, 
-               TaskStatus.BLOCKED, TaskStatus.SKIPPED, TaskStatus.EXCEPTION, TaskStatus.OTHER
-             ].map((s) => (
-              <button
-                key={s}
-                onClick={() => handleStatusChange(s)}
-                className={`text-[10px] md:text-xs px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${
-                  task.status === s
-                    ? 'ring-1 ring-offset-1 ring-slate-400 dark:ring-slate-600 font-bold shadow-sm'
-                    : 'opacity-70 hover:opacity-100'
-                } ${
-                    s === TaskStatus.PENDING ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' :
-                    s === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
-                    s === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' :
-                    s === TaskStatus.BLOCKED ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800' :
-                    s === TaskStatus.SKIPPED ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800/50 dark:text-gray-500 dark:border-gray-700' : 
-                    s === TaskStatus.EXCEPTION ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
-                    'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800'
-                }`}
-              >
-                {s === TaskStatus.PENDING ? '待办' :
-                 s === TaskStatus.IN_PROGRESS ? '进行中' :
-                 s === TaskStatus.COMPLETED ? '完成' :
-                 s === TaskStatus.BLOCKED ? '受阻' :
-                 s === TaskStatus.SKIPPED ? '不适用' : 
-                 s === TaskStatus.EXCEPTION ? '例外' :
-                 (task.customStatus || '其他')}
-              </button>
-            ))}
-            
-            {/* Custom Status Editor */}
-            {task.status === TaskStatus.OTHER && (
-                <div className="relative">
-                   {isEditingCustomStatus ? (
-                       <input 
-                         autoFocus
-                         value={customStatusText}
-                         onChange={(e) => setCustomStatusText(e.target.value)}
-                         onBlur={saveCustomStatus}
-                         onKeyDown={(e) => e.key === 'Enter' && saveCustomStatus()}
-                         className="text-xs px-2 py-0.5 rounded border border-indigo-300 outline-none w-20 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
-                         placeholder="输入状态"
-                       />
-                   ) : (
-                       <button onClick={startEditingCustom} className="p-0.5 text-slate-300 hover:text-indigo-600">
-                           <Edit3 size={12} />
-                       </button>
-                   )}
-                </div>
-            )}
-          </div>
         </div>
         
         {/* Actions Right Side */}
@@ -483,8 +428,65 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-6">
+
+        {/* 0. Status Buttons (Moved to Body) */}
+        <div className="mb-6">
+            <div className="flex gap-1.5 flex-wrap items-center">
+                {[
+                TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, 
+                TaskStatus.BLOCKED, TaskStatus.SKIPPED, TaskStatus.EXCEPTION, TaskStatus.OTHER
+                ].map((s) => (
+                <button
+                    key={s}
+                    onClick={() => handleStatusChange(s)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${
+                    task.status === s
+                        ? 'ring-1 ring-offset-1 ring-slate-400 dark:ring-slate-600 font-bold shadow-sm'
+                        : 'opacity-70 hover:opacity-100 bg-white dark:bg-slate-800'
+                    } ${
+                        s === TaskStatus.PENDING ? 'text-slate-600 border-slate-200 dark:text-slate-300 dark:border-slate-700' :
+                        s === TaskStatus.IN_PROGRESS ? 'text-blue-700 border-blue-200 dark:text-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30' :
+                        s === TaskStatus.COMPLETED ? 'text-emerald-700 border-emerald-200 dark:text-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30' :
+                        s === TaskStatus.BLOCKED ? 'text-amber-700 border-amber-200 dark:text-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30' :
+                        s === TaskStatus.SKIPPED ? 'text-gray-400 border-gray-200 dark:text-gray-500 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50' : 
+                        s === TaskStatus.EXCEPTION ? 'text-purple-700 border-purple-200 dark:text-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30' :
+                        'text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30'
+                    }`}
+                >
+                    {s === TaskStatus.PENDING ? '待办' :
+                    s === TaskStatus.IN_PROGRESS ? '进行中' :
+                    s === TaskStatus.COMPLETED ? '完成' :
+                    s === TaskStatus.BLOCKED ? '受阻' :
+                    s === TaskStatus.SKIPPED ? '不适用' : 
+                    s === TaskStatus.EXCEPTION ? '例外' :
+                    (task.customStatus || '其他')}
+                </button>
+                ))}
+                
+                {/* Custom Status Editor */}
+                {task.status === TaskStatus.OTHER && (
+                    <div className="relative">
+                    {isEditingCustomStatus ? (
+                        <input 
+                            autoFocus
+                            value={customStatusText}
+                            onChange={(e) => setCustomStatusText(e.target.value)}
+                            onBlur={saveCustomStatus}
+                            onKeyDown={(e) => e.key === 'Enter' && saveCustomStatus()}
+                            className="text-xs px-2 py-0.5 rounded border border-indigo-300 outline-none w-24 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                            placeholder="输入状态"
+                        />
+                    ) : (
+                        <button onClick={startEditingCustom} className="p-1 text-slate-300 hover:text-indigo-600">
+                            <Edit3 size={14} />
+                        </button>
+                    )}
+                    </div>
+                )}
+            </div>
+        </div>
         
-        {/* 1. MOVED TO TOP: Combined Status Notes & Description */}
+        {/* 1. Combined Status Notes & Description */}
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mb-8">
             
             {/* Current Situation (Primary) */}

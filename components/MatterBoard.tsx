@@ -358,6 +358,20 @@ const MatterBoard: React.FC<Props> = ({
 
   const handleTaskUpdate = (updatedTask: Task) => {
     if (!selectedStageId) return;
+
+    let dismissedIds = matter.dismissedAttentionIds || [];
+    
+    // Check if status changed
+    const currentTask = activeStage?.tasks.find(t => t.id === updatedTask.id);
+    if (currentTask && currentTask.status !== updatedTask.status) {
+        // Status changed!
+        // If this task was previously ignored (in dismissed list), REMOVE IT from the list
+        // This ensures if it goes Blocked -> InProgress -> Blocked again, it re-appears.
+        if (dismissedIds.includes(updatedTask.id)) {
+            dismissedIds = dismissedIds.filter(id => id !== updatedTask.id);
+        }
+    }
+
     const newStages = matter.stages.map(s => {
       if (s.id === selectedStageId) {
         return {
@@ -367,7 +381,8 @@ const MatterBoard: React.FC<Props> = ({
       }
       return s;
     });
-    onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+
+    onUpdate({ ...matter, stages: newStages, dismissedAttentionIds: dismissedIds, lastUpdated: Date.now() });
   };
 
   // Helper for conditional classes
@@ -421,9 +436,9 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-300/50 dark:bg-slate-700"></div>
              
              {!isTemplateMode && (
-                 // DESIGN UPDATE: Deep Black Squircle Logo
+                 // DESIGN UPDATE: Deep Black Squircle Logo - REMOVED SHADOW
                 <div className="flex items-center gap-2 mr-2 shrink-0 group">
-                     <div className="h-7 w-7 relative rounded-[22%] bg-black shadow-lg shadow-black/20 flex items-center justify-center overflow-hidden ring-1 ring-white/10">
+                     <div className="h-7 w-7 relative rounded-[22%] bg-black flex items-center justify-center overflow-hidden ring-1 ring-white/10">
                          {/* Subtle gloss */}
                          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
                          <span className="text-white font-bold text-[11px] tracking-tighter z-10 relative top-[1px]">Or</span>

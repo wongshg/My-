@@ -13,7 +13,7 @@ interface Props {
   onNewMatter: () => void;
   onOpenTemplateManager: () => void;
   onDeleteMatter: (id: string) => void;
-  onUpdateMatter: (m: Matter) => void; // Added for dismiss functionality
+  onUpdateMatter: (m: Matter) => void; 
   theme: 'light' | 'dark' | 'system';
   onThemeChange: (t: 'light' | 'dark' | 'system') => void;
   notifPermission: NotificationPermission;
@@ -123,31 +123,27 @@ const AttentionGroupCard: React.FC<{
   group: AttentionMatterGroup;
   onSelectMatter: (id: string) => void;
   onJumpToTask: (matterId: string, taskId: string) => void;
-  onDismiss: () => void;
-}> = ({ group, onSelectMatter, onJumpToTask, onDismiss }) => {
+  onDismissTask: (taskId: string) => void;
+}> = ({ group, onSelectMatter, onJumpToTask, onDismissTask }) => {
   return (
       <div 
         className="bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-900 shadow-sm flex flex-col h-full relative overflow-hidden hover:shadow-md transition-all group"
       >
-         {/* Dismiss Button - Appears on hover or visible on mobile */}
-         <div className="absolute top-2 right-2 z-20">
-             <button 
-               onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-               className="p-1.5 rounded-full bg-white/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all"
-               title="不再提示 (Ignore)"
-             >
-                 <EyeOff size={14} />
-             </button>
-         </div>
-
          <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 border-b border-amber-100 dark:border-amber-900/50 flex justify-between items-start cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors" onClick={() => onSelectMatter(group.matter.id)}>
-            <div className="pr-8">
+            <div className="pr-1">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-0.5">急需关注</div>
                 <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{group.matter.title}</div>
             </div>
             {group.isOverdue && (
-                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded-full shadow-sm mr-6">
+                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded-full shadow-sm shrink-0">
                     <Clock size={12} /> {group.daysLeft && group.daysLeft < 0 ? `逾期 ${Math.abs(group.daysLeft)} 天` : '即将到期'}
+                    <button 
+                         onClick={(e) => { e.stopPropagation(); onDismissTask('OVERDUE'); }}
+                         className="ml-1 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                         title="忽略此临期提醒"
+                    >
+                         <EyeOff size={10} />
+                    </button>
                 </div>
             )}
          </div>
@@ -157,18 +153,30 @@ const AttentionGroupCard: React.FC<{
                 group.tasks.map((item, idx) => (
                     <div 
                         key={idx} 
-                        onClick={() => onJumpToTask(group.matter.id, item.task.id)}
                         className={`
-                            p-2 rounded border cursor-pointer flex items-center gap-2 transition-all hover:shadow-sm
+                            p-2 rounded border flex items-center gap-2 transition-all hover:shadow-sm
                             ${item.type === 'blocked' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200' : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200'}
                         `}
                     >
-                        {item.type === 'blocked' ? <AlertOctagon size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
-                        <div className="min-w-0 flex-1">
-                            <div className="text-xs font-semibold truncate">{item.task.title}</div>
-                            <div className="text-[10px] opacity-70 truncate">{item.stage.title}</div>
+                        <div 
+                             className="flex-1 flex items-center gap-2 min-w-0 cursor-pointer"
+                             onClick={() => onJumpToTask(group.matter.id, item.task.id)}
+                        >
+                            {item.type === 'blocked' ? <AlertOctagon size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                            <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold truncate">{item.task.title}</div>
+                                <div className="text-[10px] opacity-70 truncate">{item.stage.title}</div>
+                            </div>
                         </div>
-                        <ArrowRight size={12} className="opacity-50" />
+                        
+                        {/* Dismiss specific task */}
+                        <button 
+                             onClick={(e) => { e.stopPropagation(); onDismissTask(item.task.id); }}
+                             className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-black/5 rounded-full transition-colors shrink-0"
+                             title="忽略此提醒"
+                        >
+                             <EyeOff size={14} />
+                        </button>
                     </div>
                 ))
             ) : (
@@ -198,7 +206,7 @@ const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => 
     const sortedTypes = Object.entries(breakdown).sort((a: any, b: any) => b[1] - a[1]);
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full min-h-[140px]">
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-fit">
              <div className="flex items-center gap-3 mb-3">
                 <div className={`p-2 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
                     <Icon size={18} className={color.replace('bg-', 'text-').replace('500', '600 dark:text-400')} />
@@ -209,7 +217,7 @@ const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => 
                 </div>
              </div>
              
-             <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[120px] pr-1">
+             <div className="flex-1 space-y-1.5">
                  {sortedTypes.length > 0 ? (
                      sortedTypes.map(([type, c]: any) => (
                          <div key={type} className="flex justify-between items-center text-xs">
@@ -296,20 +304,16 @@ const Dashboard: React.FC<Props> = ({
     }
   });
 
-  const handleDismissAttention = (group: AttentionMatterGroup) => {
-     if (!confirm("确定暂时忽略这些提醒吗？\n如果后续有新的卡点或异常，卡片会再次出现。")) return;
+  const handleDismissTask = (matter: Matter, taskId: string) => {
+     if (!confirm("确定不再提示此项吗？\n如果后续状态再次变更，它将重新提醒。")) return;
 
-     const idsToIgnore = group.tasks.map(t => t.task.id);
-     if (group.isOverdue) idsToIgnore.push('OVERDUE');
-     
-     const currentIgnored = group.matter.dismissedAttentionIds || [];
-     const newIgnored = [...currentIgnored, ...idsToIgnore];
-
+     const currentIgnored = matter.dismissedAttentionIds || [];
+     const newIgnored = [...currentIgnored, taskId];
      // Use Set to unique
      const uniqueIgnored = Array.from(new Set(newIgnored));
      
      onUpdateMatter({
-         ...group.matter,
+         ...matter,
          dismissedAttentionIds: uniqueIgnored,
          lastUpdated: Date.now()
      });
@@ -440,8 +444,8 @@ const Dashboard: React.FC<Props> = ({
                 STATS AREA 
             */}
             <div className="mb-8 mt-4">
-                 {/* Row 1: Primary Stats (Expanded by Type) */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                 {/* Row 1: Primary Stats (Expanded by Type, Auto Height) */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-start">
                      <DetailedStatCard 
                         label="正在推进"
                         matters={inProgressMatters}
@@ -525,14 +529,14 @@ const Dashboard: React.FC<Props> = ({
                            <CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
                         {attentionGroups.map((group, idx) => (
                             <AttentionGroupCard 
                                 key={group.matter.id} 
                                 group={group}
                                 onSelectMatter={onSelectMatter}
                                 onJumpToTask={onJumpToTask}
-                                onDismiss={() => handleDismissAttention(group)}
+                                onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)}
                             />
                         ))}
                         </div>
@@ -551,7 +555,7 @@ const Dashboard: React.FC<Props> = ({
                     暂无常规推进中的事项。
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
                     {inProgressMatters.map(m => (
                         <MatterCard 
                         key={m.id} 
