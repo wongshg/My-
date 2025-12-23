@@ -62,6 +62,11 @@ const MatterBoard: React.FC<Props> = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
 
+  // Swipe Back Gesture State
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const MIN_SWIPE_DISTANCE = 50; // px
+
   // Handle Deep Linking & Mobile View Sync
   useEffect(() => {
     if (targetTaskId) {
@@ -74,8 +79,6 @@ const MatterBoard: React.FC<Props> = ({
           break;
         }
       }
-    } else {
-        // Default View State based on Desktop Logic
     }
   }, [targetTaskId, matter.id]); 
 
@@ -107,12 +110,43 @@ const MatterBoard: React.FC<Props> = ({
       }
   };
 
+  // --- Touch Handlers for Swipe Back ---
+  const onTouchStart = (e: React.TouchEvent) => {
+      setTouchEnd(null);
+      // Only record start if user is starting from the left edge (first 50px)
+      // This allows general horizontal scrolling (if any) to work elsewhere
+      if (e.targetTouches[0].clientX < 50) {
+          setTouchStart(e.targetTouches[0].clientX);
+      } else {
+          setTouchStart(null);
+      }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+      if (touchStart !== null) {
+        setTouchEnd(e.targetTouches[0].clientX);
+      }
+  };
+
+  const onTouchEnd = () => {
+      if (!touchStart || !touchEnd) return;
+      
+      const distance = touchEnd - touchStart;
+      const isLeftToRightSwipe = distance > MIN_SWIPE_DISTANCE;
+      
+      if (isLeftToRightSwipe) {
+          goMobileBack();
+      }
+      setTouchStart(null);
+      setTouchEnd(null);
+  };
+
   const saveHeaderInfo = () => {
     if (editTitleVal.trim()) {
       onUpdate({ 
           ...matter, 
           title: editTitleVal, 
-          type: isTemplateMode ? editDescVal : matter.type, // Update description if in template mode
+          type: isTemplateMode ? editDescVal : matter.type, 
           lastUpdated: Date.now() 
       });
     } else {
@@ -303,11 +337,17 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   return (
-    // Outer container scrolls
-    <div className="h-screen overflow-y-auto bg-white scroll-smooth">
+    // Fixed: Use h-[100dvh] and flex-col for mobile scrolling fix.
+    // Add touch handlers for Swipe Back
+    <div 
+        className="h-[100dvh] w-full flex flex-col bg-white overflow-hidden"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+    >
         
-        {/* Sticky Frosted Header */}
-        <header className="sticky top-0 z-50 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 supports-[backdrop-filter]:bg-white/60 transition-all">
+        {/* Sticky Frosted Header - flex-none so it doesn't shrink/grow */}
+        <header className="flex-none z-50 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 supports-[backdrop-filter]:bg-white/60 transition-all">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
               onClick={goMobileBack}
@@ -318,10 +358,11 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-200"></div>
              
              {!isTemplateMode && (
-                 // DESIGN UPDATE: Minimalist brand for MatterBoard
+                 // Brand: Orbit
                 <div className="flex items-center gap-2 mr-2 shrink-0 group">
-                     <div className="h-6 w-6 bg-slate-900 rounded-md flex items-center justify-center shadow-sm">
-                        <span className="text-white font-bold text-[10px] tracking-tighter">Op</span>
+                     <div className="h-6 w-6 relative rounded-[22%] bg-gradient-to-br from-slate-700 to-black shadow-sm flex items-center justify-center overflow-hidden ring-1 ring-white/20">
+                         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent"></div>
+                         <span className="text-white font-bold text-[10px] tracking-tighter z-10">Or</span>
                      </div>
                 </div>
              )}
@@ -425,7 +466,7 @@ const MatterBoard: React.FC<Props> = ({
 
         {/* AI Panel */}
         {aiAnalysis && !isTemplateMode && (
-            <div className="bg-indigo-600 text-white p-4 shrink-0 shadow-lg relative animate-slideDown z-30">
+            <div className="bg-indigo-600 text-white p-4 shrink-0 shadow-lg relative animate-slideDown z-30 flex-none">
               <div className="max-w-4xl mx-auto flex items-start gap-4">
                 <Sparkles size={20} className="mt-1 text-indigo-300 shrink-0" />
                 <div className="flex-1 text-sm whitespace-pre-wrap leading-relaxed opacity-95 font-light">
@@ -436,14 +477,17 @@ const MatterBoard: React.FC<Props> = ({
             </div>
         )}
 
-        {/* 3-Column Layout (Responsive Drill Down) */}
-        {/* Adjusted height calculation to account for the sticky header in the flow */}
-        <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] relative">
+        {/* Content Area - Flex 1 to fill remaining space, internal scrolling */}
+        <div className="flex-1 overflow-hidden relative flex flex-col md:flex-row w-full">
             
-            {/* Col 1: Stages */}
-            <div className={`w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col shrink-0 ${getColVisibility('STAGES')} md:flex`}>
-                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-16 md:static z-10">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段 (Stages)</span>
+            {/* Col 1: Stages - Mobile Full Screen / Desktop Sidebar */}
+            <div className={`
+                flex-1 md:flex-none w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col 
+                overflow-y-auto overscroll-y-contain
+                ${getColVisibility('STAGES')} md:flex
+            `}>
+                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-0 md:static z-10">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段</span>
                     <button 
                       onClick={() => setIsAddingStage(true)} 
                       className="text-slate-500 hover:text-blue-600 p-1.5 rounded hover:bg-slate-200 transition-colors"
@@ -564,8 +608,12 @@ const MatterBoard: React.FC<Props> = ({
             </div>
 
             {/* Col 2: Task List */}
-            <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex-col shrink-0 ${getColVisibility('TASKS')} md:flex`}>
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10 sticky top-16 md:static">
+            <div className={`
+                flex-1 md:flex-none w-full md:w-80 bg-white border-r border-slate-200 flex-col 
+                overflow-y-auto overscroll-y-contain
+                ${getColVisibility('TASKS')} md:flex
+            `}>
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10 sticky top-0 md:static">
                     <h2 className="font-bold text-slate-800 truncate max-w-[160px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
                     </h2>
@@ -677,7 +725,11 @@ const MatterBoard: React.FC<Props> = ({
             </div>
 
             {/* Col 3: Task Details */}
-            <div className={`w-full md:flex-1 bg-white flex-col min-w-0 ${getColVisibility('DETAILS')} md:flex`}>
+            <div className={`
+                flex-1 w-full bg-white flex-col min-w-0 
+                overflow-y-auto overscroll-y-contain
+                ${getColVisibility('DETAILS')} md:flex
+            `}>
                 {activeTask ? (
                     <TaskDetailPane 
                         // Re-rendering controlled by passing full task object

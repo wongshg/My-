@@ -123,7 +123,7 @@ const AttentionGroupCard: React.FC<{
       >
          <div className="bg-amber-50/50 p-3 border-b border-amber-100 flex justify-between items-start cursor-pointer hover:bg-amber-100/50 transition-colors" onClick={() => onSelectMatter(group.matter.id)}>
             <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">急需关注事项</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">急需关注</div>
                 <div className="font-bold text-slate-800 text-sm truncate">{group.matter.title}</div>
             </div>
             {group.isOverdue && (
@@ -161,7 +161,7 @@ const AttentionGroupCard: React.FC<{
             onClick={() => onSelectMatter(group.matter.id)}
             className="p-2 text-center bg-slate-50 border-t border-slate-100 text-xs text-slate-500 hover:text-blue-600 hover:bg-slate-100 cursor-pointer font-medium transition-colors"
          >
-            查看事项详情
+            查看详情
          </div>
       </div>
   )
@@ -258,10 +258,10 @@ const Dashboard: React.FC<Props> = ({
 
   const getModalTitle = () => {
       switch(activeStatModal) {
-          case 'progress': return '正在推进的事项清单';
-          case 'urgent': return '需急需关注的事项清单';
-          case 'completed': return '已完成（未归档）事项清单';
-          case 'archived': return '已归档事项清单';
+          case 'progress': return '正在推进';
+          case 'urgent': return '急需关注';
+          case 'completed': return '已完成（未归档）';
+          case 'archived': return '已归档';
           default: return '';
       }
   };
@@ -316,22 +316,26 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    // Structure changed: The outer container scrolls, header is sticky inside it
-    <div className="h-screen overflow-y-auto bg-[#f8fafc] scroll-smooth">
+    // FIXED: Use h-[100dvh] to prevent address bar shift issues. 
+    // FIXED: overscroll-behavior-y: none in CSS (index.html) + class overscroll-y-contain here ensures inner scroll only.
+    <div className="h-[100dvh] w-full flex flex-col bg-[#f8fafc] overflow-hidden relative">
       
       {/* 
-          APPLE-STYLE STICKY HEADER 
-          - bg-white/70 + backdrop-blur-2xl provides the "liquid glass" effect 
-          - sticky top-0 keeps it at the top while content scrolls underneath
+          Sticky Header
+          - Since the parent has overflow-hidden and this container is flex-col, 
+          - we need the content area below to scroll, NOT the whole body.
+          - We place the header as a flex item (flex-none) so it stays put.
       */}
-      <header className="sticky top-0 z-50 h-16 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 flex items-center justify-between px-6 transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
+      <header className="flex-none z-50 h-16 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 flex items-center justify-between px-6 transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
         <div className="flex items-center gap-3">
-             {/* DESIGN UPDATE: Minimalist "Opus" branding */}
+             {/* Logo: Orbit */}
              <div className="flex items-center gap-2 group cursor-default">
-                 <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:scale-105">
-                     <span className="text-white font-bold text-sm tracking-tighter">Op</span>
+                 <div className="h-9 w-9 relative rounded-[22%] bg-gradient-to-br from-slate-700 to-black shadow-lg shadow-slate-300/50 flex items-center justify-center overflow-hidden ring-1 ring-white/20 transition-transform group-hover:scale-105">
+                     <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent"></div>
+                     <span className="text-white font-black text-sm tracking-tighter z-10">Or</span>
+                     <div className="absolute bottom-[-5px] right-[-5px] w-5 h-5 bg-blue-500 blur-md opacity-40"></div>
                  </div>
-                 <span className="text-xl font-bold text-slate-800 tracking-tight">Opus</span>
+                 <span className="text-xl font-bold text-slate-800 tracking-tight">Orbit</span>
              </div>
         </div>
         
@@ -351,7 +355,9 @@ const Dashboard: React.FC<Props> = ({
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6 min-h-[calc(100vh-4rem)]">
+      {/* Content Area - Scrolls independently */}
+      <div className="flex-1 overflow-y-auto overscroll-y-contain scroll-smooth w-full">
+        <div className="max-w-7xl mx-auto p-6 min-h-full pb-20">
             
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -390,7 +396,7 @@ const Dashboard: React.FC<Props> = ({
                 <section>
                     <div className="flex items-center gap-2 mb-4">
                         <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">急需关注 (Attention)</h2>
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">急需关注</h2>
                         <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span>
                     </div>
                     {attentionGroups.length === 0 ? (
@@ -415,7 +421,7 @@ const Dashboard: React.FC<Props> = ({
                 <section>
                 <div className="flex items-center gap-2 mb-4">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">正在推进 (In Progress)</h2>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">正在推进</h2>
                     <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span>
                 </div>
                 {inProgressMatters.length === 0 ? (
@@ -438,12 +444,12 @@ const Dashboard: React.FC<Props> = ({
                 )}
                 </section>
 
-                {/* Section 3: Completed (Active but 100% done) */}
+                {/* Section 3: Completed */}
                 {completedActiveMatters.length > 0 && (
                 <section>
                     <div className="flex items-center gap-2 mb-4">
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">已完成 (Completed)</h2>
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">已完成</h2>
                         <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{completedActiveMatters.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -461,12 +467,12 @@ const Dashboard: React.FC<Props> = ({
                 </section>
                 )}
 
-                {/* Section 4: Archived (New Requirement) */}
+                {/* Section 4: Archived */}
                 {archivedMatters.length > 0 && (
                     <section className="pt-8 border-t border-slate-200/50">
                         <div className="flex items-center gap-2 mb-4 opacity-70 hover:opacity-100 transition-opacity">
                             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full"></div>
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">归档箱 (Archived)</h2>
+                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">归档箱</h2>
                             <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{archivedMatters.length}</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -484,6 +490,7 @@ const Dashboard: React.FC<Props> = ({
                     </section>
                 )}
             </div>
+        </div>
       </div>
 
       <StatDetailModal />
