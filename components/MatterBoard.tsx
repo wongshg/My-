@@ -187,20 +187,19 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const deleteStage = (stageId: string) => {
-    setTimeout(() => {
-        if(!confirm("确定删除此阶段及其所有任务吗？")) return;
-        
-        const newStages = matter.stages.filter(s => s.id !== stageId);
-        
-        if (selectedStageId === stageId) {
-           const deletedIndex = matter.stages.findIndex(s => s.id === stageId);
-           const nextStage = newStages[Math.max(0, deletedIndex - 1)];
-           setSelectedStageId(nextStage?.id || null);
-           setSelectedTaskId(null);
-        }
+      // Fix: Removed setTimeout which was causing state issues. Use direct update.
+      if(!confirm("确定删除此阶段及其所有任务吗？")) return;
+      
+      const newStages = matter.stages.filter(s => s.id !== stageId);
+      
+      if (selectedStageId === stageId) {
+          const deletedIndex = matter.stages.findIndex(s => s.id === stageId);
+          const nextStage = newStages[Math.max(0, deletedIndex - 1)];
+          setSelectedStageId(nextStage?.id || null);
+          setSelectedTaskId(null);
+      }
 
-        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    }, 0);
+      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
   };
 
   const startEditingStage = (stage: Stage) => {
@@ -246,22 +245,20 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const deleteTask = (stageId: string, taskId: string) => {
-    setTimeout(() => {
-        if (!confirm('确定删除此任务吗？')) return;
-        
-        const newStages = matter.stages.map(s => {
-          if (s.id === stageId) {
-            return { ...s, tasks: s.tasks.filter(t => t.id !== taskId) };
-          }
-          return s;
-        });
-
-        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-        if (selectedTaskId === taskId) {
-          setSelectedTaskId(null);
-          setMobileView('TASKS'); // Go back to list on mobile
+      if (!confirm('确定删除此任务吗？')) return;
+      
+      const newStages = matter.stages.map(s => {
+        if (s.id === stageId) {
+          return { ...s, tasks: s.tasks.filter(t => t.id !== taskId) };
         }
-    }, 0);
+        return s;
+      });
+
+      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+      if (selectedTaskId === taskId) {
+        setSelectedTaskId(null);
+        setMobileView('TASKS'); // Go back to list on mobile
+      }
   };
 
   const startEditingTask = (task: Task) => {
@@ -320,17 +317,17 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-200"></div>
              
              {!isTemplateMode && (
-                // Fix: Increased contrast for logo background
-                <div className="flex items-center justify-center h-8 w-auto px-2 rounded-lg bg-white/80 backdrop-blur-xl border border-white/50 shadow-sm mr-2">
+                 // DESIGN UPDATE: Premium Blue Gradient Background for Logo
+                <div className="flex items-center justify-center h-8 w-auto px-2 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 shadow-sm mr-2 ring-1 ring-blue-700/50">
                     <img 
                         src="/logo.png" 
                         onError={(e) => {
-                            e.currentTarget.src = "https://placehold.co/100x40?text=Opus";
-                            e.currentTarget.style.opacity = '0.5';
+                            e.currentTarget.style.display = 'none';
                         }}
                         alt="Logo" 
-                        className="h-5 object-contain" 
+                        className="h-4 object-contain brightness-0 invert" 
                     />
+                    <span className="ml-1 text-white font-bold tracking-tight text-xs">Opus</span>
                 </div>
              )}
              
@@ -466,8 +463,6 @@ const MatterBoard: React.FC<Props> = ({
                         return (
                             <div 
                                 key={stage.id}
-                                // Fix: Removed general 'hover' class that caused double-tap on mobile.
-                                // Used 'md:hover' for desktop and 'active' for mobile feedback.
                                 className={`
                                     group flex items-center justify-between px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
                                     ${isSelected ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-slate-600 md:hover:bg-slate-200/50 active:bg-slate-100'}
@@ -508,7 +503,9 @@ const MatterBoard: React.FC<Props> = ({
                                 <ChevronRight size={16} className="text-slate-300 md:hidden" />
 
                                 {!isEditing && (
-                                    <div className="hidden md:flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 z-10 bg-white/50 rounded">
+                                    // Fix: Removed 'hidden md:flex' so buttons are available on mobile.
+                                    // Adjusted opacity logic: Desktop (md) -> opacity-0 hover:opacity-100. Mobile -> opacity-100 (always visible).
+                                    <div className="flex items-center gap-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white/50 rounded ml-1">
                                         <button 
                                             type="button"
                                             onMouseDown={(e) => e.stopPropagation()}
@@ -517,10 +514,10 @@ const MatterBoard: React.FC<Props> = ({
                                                 e.stopPropagation(); 
                                                 startEditingStage(stage); 
                                             }}
-                                            className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50"
+                                            className="text-slate-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50"
                                             title="重命名"
                                         >
-                                            <Edit2 size={12} className="pointer-events-none" />
+                                            <Edit2 size={14} className="pointer-events-none" />
                                         </button>
                                         <button 
                                             type="button"
@@ -530,10 +527,10 @@ const MatterBoard: React.FC<Props> = ({
                                                 e.stopPropagation(); 
                                                 deleteStage(stage.id); 
                                             }}
-                                            className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-red-50"
+                                            className="text-slate-400 hover:text-red-500 p-1.5 rounded hover:bg-red-50"
                                             title="删除阶段"
                                         >
-                                            <Trash2 size={12} className="pointer-events-none" />
+                                            <Trash2 size={14} className="pointer-events-none" />
                                         </button>
                                     </div>
                                 )}

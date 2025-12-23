@@ -44,7 +44,6 @@ const MatterCard: React.FC<{
       `}
     >
       {/* 
-         Fix: Opacity logic adjusted for mobile. 
          Mobile: opacity-100 (always visible). 
          Desktop (md): opacity-0, hover:opacity-100.
          Added z-20 and larger touch target.
@@ -313,18 +312,20 @@ const Dashboard: React.FC<Props> = ({
     <div className="max-w-7xl mx-auto p-6 min-h-screen">
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-             {/* Fix: Increased contrast for logo background */}
-             <div className="flex items-center justify-center h-12 w-auto px-3 rounded-xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-sm transition-all hover:bg-white/90">
+             {/* DESIGN UPDATE: Premium Blue Gradient Background for Transparent Logo */}
+             <div className="flex items-center justify-center h-12 w-auto px-4 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-md ring-1 ring-blue-700/50">
                  <img 
                     src="/logo.png" 
                     onError={(e) => {
-                        // Fallback if logo.png doesn't exist
-                        e.currentTarget.src = "https://placehold.co/100x40?text=Opus";
-                        e.currentTarget.style.opacity = '0.5';
+                        // Fallback logic
+                        e.currentTarget.style.display = 'none'; 
+                        // If logo fails, we can show text, but for now just hide image to avoid broken icon
                     }}
-                    alt="Opus Logo" 
-                    className="h-8 object-contain" 
+                    alt="Opus" 
+                    className="h-7 object-contain brightness-0 invert" // Make logo white if it has transparency/black lines
                  />
+                 {/* Fallback Text if image fails or for SEO/Visual reinforcement */}
+                 <span className="ml-2 text-white font-bold tracking-tight text-lg">Opus</span>
              </div>
         </div>
         <div className="flex items-center gap-3">
