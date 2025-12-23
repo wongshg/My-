@@ -8,6 +8,7 @@ import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save } from 'lucide-reac
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
 const TEMPLATE_KEY = 'opus_templates_v1';
+const THEME_KEY = 'opus_theme_v1';
 
 const saveMatters = (matters: Matter[]) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
@@ -35,11 +36,6 @@ const uuid = () => Math.random().toString(36).substr(2, 9);
 // --- Notification Logic ---
 const checkDueTasks = (matters: Matter[]) => {
     if (!('Notification' in window)) return;
-    
-    if (Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-
     if (Notification.permission !== 'granted') return;
 
     const today = new Date();
@@ -75,14 +71,13 @@ const checkDueTasks = (matters: Matter[]) => {
     if (dueCount > 0) {
         new Notification("Orbit 工作台提醒", {
             body: `您有 ${dueCount} 个事项或任务即将在今天或明天到期，请及时处理。`,
-            icon: '/favicon.ico' // Falls back if not present
+            icon: '/favicon.ico' 
         });
     }
 };
 
 // --- Standalone Components ---
 
-// Fix: Extract Modal outside of App to prevent re-rendering/focus/event issues
 const TemplateManagerModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -94,13 +89,13 @@ const TemplateManagerModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh] animate-scaleIn" onClick={e => e.stopPropagation()}>
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh] animate-scaleIn" onClick={e => e.stopPropagation()}>
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                         <LayoutTemplate size={20} /> 模板管理
                     </h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                         <X size={24} />
                     </button>
                 </div>
@@ -108,28 +103,28 @@ const TemplateManagerModal: React.FC<{
                     <div className="space-y-3">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">已录入模板 (全部)</h3>
-                            <button onClick={onCreate} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                            <button onClick={onCreate} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                                 <Plus size={12} /> 新建空白模板
                             </button>
                         </div>
 
                         {templates.length === 0 && (
-                            <div className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-lg">
+                            <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                                 暂无模板。
                             </div>
                         )}
 
                         {templates.map(t => (
-                            <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white hover:border-blue-300 group transition-all">
+                            <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 group transition-all">
                                 <div className="flex-1">
-                                    <div className="font-semibold text-slate-800">{t.name}</div>
-                                    <div className="text-xs text-slate-500 mt-1">{t.description}</div>
+                                    <div className="font-semibold text-slate-800 dark:text-slate-200">{t.name}</div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.description}</div>
                                 </div>
 
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onEdit(t)}
-                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 flex items-center gap-1 text-xs"
+                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-1 text-xs"
                                         title="编辑详细内容"
                                     >
                                         <Edit2 size={14} /> 编辑
@@ -141,7 +136,7 @@ const TemplateManagerModal: React.FC<{
                                             e.stopPropagation(); // Double safety
                                             onDelete(t.id);
                                         }}
-                                        className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50"
+                                        className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                                         title="删除"
                                     >
                                         <Trash2 size={14} />
@@ -163,6 +158,16 @@ const App: React.FC = () => {
   const [activeMatterId, setActiveMatterId] = useState<string | null>(null);
   const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
   
+  // Theme State
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | 'system') || 'system';
+  });
+
+  // Notif State
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'default'
+  );
+
   // Template Editing State
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
@@ -175,6 +180,19 @@ const App: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [matterToTemplate, setMatterToTemplate] = useState<Matter | null>(null);
 
+  // Apply Theme
+  useEffect(() => {
+     const root = window.document.documentElement;
+     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+     
+     if (isDark) {
+         root.classList.add('dark');
+     } else {
+         root.classList.remove('dark');
+     }
+     localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
   useEffect(() => {
     const loadedMatters = loadMatters();
     setMatters(loadedMatters);
@@ -183,6 +201,16 @@ const App: React.FC = () => {
     // Check notifications once on load
     checkDueTasks(loadedMatters);
   }, []);
+
+  const requestNotificationPermission = async () => {
+     if (!('Notification' in window)) return;
+     const result = await Notification.requestPermission();
+     setNotifPermission(result);
+     if (result === 'granted') {
+         checkDueTasks(matters);
+         alert("提醒已开启！应用将在任务到期前通知您。");
+     }
+  };
 
   const handleCreateMatter = (template: Template, title: string, dueDate: string) => {
     const newMatter: Matter = {
@@ -203,12 +231,9 @@ const App: React.FC = () => {
   };
 
   const handleUpdateMatter = (updatedMatter: Matter) => {
-    // If we are editing a template, we just update the in-memory matter list so the board reflects changes
-    // We do NOT save to 'matters' persistent storage yet
     const updatedList = matters.map(m => m.id === updatedMatter.id ? updatedMatter : m);
     setMatters(updatedList);
     
-    // Only persist if it's a real matter (not a template edit session)
     if (!editingTemplateId) {
        saveMatters(updatedList);
     }
@@ -377,25 +402,25 @@ const App: React.FC = () => {
     };
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex overflow-hidden max-h-[85vh]">
+      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full flex overflow-hidden max-h-[85vh]">
           {/* Left: Template Selection */}
-          <div className="w-5/12 border-r border-slate-100 flex flex-col bg-slate-50">
-            <div className="p-4 border-b border-slate-200 bg-white">
-               <h2 className="text-lg font-bold text-slate-800">选择业务类型</h2>
+          <div className="w-5/12 border-r border-slate-100 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-slate-950">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+               <h2 className="text-lg font-bold text-slate-800 dark:text-white">选择业务类型</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <div 
                   onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}
                   className={`border border-dashed rounded-lg p-4 cursor-pointer transition-all ${
                     selectedTemplate?.id === 'custom' 
-                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' 
-                    : 'border-slate-300 hover:border-slate-400 hover:bg-white'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500' 
+                    : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-white dark:hover:bg-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <Plus size={16} className="text-slate-500"/>
-                    <h3 className="font-semibold text-slate-700">空白事项</h3>
+                    <Plus size={16} className="text-slate-500 dark:text-slate-400"/>
+                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">空白事项</h3>
                   </div>
                   <p className="text-xs text-slate-400">适用于非常规专项工作</p>
                 </div>
@@ -406,66 +431,66 @@ const App: React.FC = () => {
                   onClick={() => setSelectedTemplate(t)}
                   className={`border rounded-lg p-4 cursor-pointer transition-all relative group ${
                     selectedTemplate?.id === t.id 
-                    ? 'border-blue-500 bg-white ring-1 ring-blue-500 shadow-md' 
-                    : 'border-slate-200 hover:border-blue-300 bg-white shadow-sm'
+                    ? 'border-blue-500 bg-white dark:bg-slate-800 ring-1 ring-blue-500 shadow-md' 
+                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-slate-800 shadow-sm'
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-blue-700' : 'text-slate-800'}`}>{t.name}</h3>
+                    <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>{t.name}</h3>
                   </div>
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-2">{t.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{t.description}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Right: Details */}
-          <div className="w-7/12 p-8 flex flex-col">
-            <h2 className="text-2xl font-bold text-slate-800 mb-8">开始新工作</h2>
+          <div className="w-7/12 p-8 flex flex-col bg-white dark:bg-slate-900">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-8">开始新工作</h2>
             
             <div className="space-y-6 flex-1">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">事项名称 <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">事项名称 <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   autoFocus
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="例如：XX项目公司注销"
-                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">预计完成日期</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">预计完成日期</label>
                 <input 
                   type="date" 
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
                 />
                 <p className="text-xs text-slate-400 mt-2">临期前 7 天将在工作台置顶提醒。</p>
               </div>
 
               {selectedTemplate && (
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-600">
-                   已选模板：<span className="font-bold text-slate-800">{selectedTemplate.name}</span>
+                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                   已选模板：<span className="font-bold text-slate-800 dark:text-white">{selectedTemplate.name}</span>
                    <div className="mt-1 text-xs text-slate-400">包含 {selectedTemplate.stages.length} 个阶段</div>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100">
+            <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
               <button 
                 onClick={() => setIsNewMatterModalOpen(false)}
-                className="px-6 py-2.5 text-slate-500 hover:text-slate-800 font-medium transition-colors"
+                className="px-6 py-2.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-medium transition-colors"
               >
                 取消
               </button>
               <button 
                 disabled={!selectedTemplate || !title}
                 onClick={handleSubmit}
-                className="flex-1 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-200 font-medium"
+                className="flex-1 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-200 dark:shadow-none font-medium"
               >
                 创建事项
               </button>
@@ -489,6 +514,8 @@ const App: React.FC = () => {
           onSaveTemplate={editingTemplateId ? handleSaveTemplateChanges : initiateSaveTemplate}
           onDeleteMatter={handleDeleteMatter}
           isTemplateMode={!!editingTemplateId}
+          theme={theme}
+          onThemeChange={setTheme}
         />
       ) : (
         <Dashboard 
@@ -498,6 +525,10 @@ const App: React.FC = () => {
           onNewMatter={() => setIsNewMatterModalOpen(true)}
           onOpenTemplateManager={() => setIsTemplateManagerOpen(true)}
           onDeleteMatter={handleDeleteMatter}
+          theme={theme}
+          onThemeChange={setTheme}
+          notifPermission={notifPermission}
+          onRequestNotif={requestNotificationPermission}
         />
       )}
       
@@ -514,14 +545,14 @@ const App: React.FC = () => {
       
       {/* Save Template Modal Overlay */}
       {isSaveTemplateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
-              <h3 className="text-lg font-bold text-slate-800 mb-4">另存为模板</h3>
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">另存为模板</h3>
               <div className="mb-4">
-                 <label className="block text-sm font-medium text-slate-700 mb-1">模板名称</label>
+                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">模板名称</label>
                  <input 
                     autoFocus
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white rounded focus:ring-2 focus:ring-blue-500 outline-none"
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
                  />
@@ -530,8 +561,8 @@ const App: React.FC = () => {
                  </p>
               </div>
               <div className="flex justify-end gap-2">
-                 <button onClick={() => setIsSaveTemplateModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">取消</button>
-                 <button onClick={confirmSaveTemplate} disabled={!templateName} className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700 disabled:opacity-50">保存模板</button>
+                 <button onClick={() => setIsSaveTemplateModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">取消</button>
+                 <button onClick={confirmSaveTemplate} disabled={!templateName} className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-50">保存模板</button>
               </div>
            </div>
         </div>

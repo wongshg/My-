@@ -16,6 +16,21 @@
 
     <title>Orbit - 个人工作台</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#1e293b', // Custom dark shade
+                950: '#020617', // Custom darker shade
+              }
+            }
+          }
+        }
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       // Polyfill for process.env
@@ -40,6 +55,13 @@
       body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background-color: #f8fafc;
+        transition: background-color 0.3s;
+      }
+      
+      /* Dark Mode Body */
+      html.dark body {
+        background-color: #0f172a; /* slate-900 */
+        color: #f8fafc;
       }
 
       #root {
@@ -49,10 +71,14 @@
         flex-direction: column;
       }
 
-      /* Selection color to match theme */
+      /* Selection color */
       ::selection {
-        background: #e0f2fe; /* blue-100 */
-        color: #0f172a; /* slate-900 */
+        background: #e0f2fe; 
+        color: #0f172a;
+      }
+      html.dark ::selection {
+        background: #1e40af;
+        color: #ffffff;
       }
 
       /* Custom Scrollbar */

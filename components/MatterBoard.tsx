@@ -4,7 +4,8 @@ import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
 import { 
   Plus, ArrowLeft, Edit2, Archive, Sparkles, 
-  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock
+  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
+  Moon, Sun, Monitor
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -18,6 +19,8 @@ interface Props {
   onSaveTemplate: (matter: Matter) => void;
   onDeleteMatter: (id: string) => void;
   isTemplateMode?: boolean;
+  theme?: 'light' | 'dark' | 'system';
+  onThemeChange?: (t: 'light' | 'dark' | 'system') => void;
 }
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
@@ -29,7 +32,9 @@ const MatterBoard: React.FC<Props> = ({
   onBack, 
   onSaveTemplate,
   onDeleteMatter,
-  isTemplateMode = false
+  isTemplateMode = false,
+  theme,
+  onThemeChange
 }) => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(matter.stages[0]?.id || null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -360,10 +365,21 @@ const MatterBoard: React.FC<Props> = ({
       return new Date(ts).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
   };
 
+  const getThemeIcon = () => {
+    switch(theme) {
+      case 'dark': return <Moon size={16} />;
+      case 'light': return <Sun size={16} />;
+      default: return <Monitor size={16} />;
+    }
+  };
+
+  // Shared Header Style for Liquid Glass Effect
+  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
+
   return (
     // Fixed: Use h-[100dvh] and flex-col for mobile scrolling fix.
     <div 
-        className="h-[100dvh] w-full flex flex-col bg-white overflow-hidden"
+        className="h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -371,18 +387,21 @@ const MatterBoard: React.FC<Props> = ({
         
         {/* 
             ENHANCED STICKY FROSTED HEADER 
-            - Use bg-white/50 + backdrop-blur-3xl + saturate-180 for "Liquid Glass" effect
-            - Added explicit border-b for separation
+            - Unified liquid glass style
         */}
-        <header className="flex-none z-50 bg-white/50 backdrop-blur-3xl backdrop-saturate-150 border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 transition-all">
+        <header className="flex-none z-50 h-16 
+            bg-white/40 dark:bg-slate-900/40 
+            backdrop-blur-xl backdrop-saturate-150 
+            border-b border-slate-200/50 dark:border-slate-800/50 
+            px-4 flex items-center justify-between shrink-0 transition-all">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
               onClick={goMobileBack}
-              className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors"
             >
               <ArrowLeft size={18} />
             </button>
-            <div className="h-5 w-[1px] bg-slate-300/50"></div>
+            <div className="h-5 w-[1px] bg-slate-300/50 dark:bg-slate-700"></div>
              
              {!isTemplateMode && (
                  // DESIGN UPDATE: Deep Black Squircle Logo
@@ -399,7 +418,7 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col gap-1 w-full max-w-md">
                     <input 
                       autoFocus
-                      className="font-bold text-base text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent placeholder-slate-400"
+                      className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 focus:outline-none bg-transparent placeholder-slate-400"
                       value={editTitleVal}
                       onChange={(e) => setEditTitleVal(e.target.value)}
                       onBlur={saveHeaderInfo}
@@ -413,12 +432,12 @@ const MatterBoard: React.FC<Props> = ({
                   onClick={() => setIsEditingTitle(true)}
                 >
                   <div className="flex items-center gap-2">
-                      <h1 className="font-bold text-slate-800 truncate text-base">{matter.title}</h1>
+                      <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
                       <Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   {/* Show Matter Due Date in Header */}
                   {matter.dueDate && (
-                      <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                           <Clock size={10} /> 截止: {new Date(matter.dueDate).toLocaleDateString()}
                       </div>
                   )}
@@ -427,16 +446,31 @@ const MatterBoard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
+             {/* Theme Toggle (Board) */}
+             <button 
+                onClick={() => {
+                    if(onThemeChange) {
+                        if(theme === 'system') onThemeChange('light');
+                        else if(theme === 'light') onThemeChange('dark');
+                        else onThemeChange('system');
+                    }
+                }}
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors hidden md:block"
+             >
+                {getThemeIcon()}
+            </button>
+            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+
             {!isTemplateMode && (
                 <>
                     <button 
                         onClick={exportMaterials}
                         disabled={isExporting}
-                        className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 rounded-md transition-colors"
+                        className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors"
                     >
                         <Download size={14} /> {isExporting ? '打包中...' : '下载材料'}
                     </button>
-                    <div className="h-4 w-[1px] bg-slate-200 hidden md:block"></div>
+                    <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
                 </>
             )}
 
@@ -450,7 +484,7 @@ const MatterBoard: React.FC<Props> = ({
             ) : (
                 <button 
                     onClick={() => onSaveTemplate(matter)}
-                    className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 rounded-md transition-colors"
+                    className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors"
                     title="Save structure as template"
                 >
                     <LayoutTemplate size={14} /> 另存为模板
@@ -459,11 +493,11 @@ const MatterBoard: React.FC<Props> = ({
 
             {!isTemplateMode && (
                 <>
-                    <div className="h-4 w-[1px] bg-slate-200 hidden md:block"></div>
+                    <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
                     <button 
                         onClick={triggerAI}
                         disabled={isAnalyzing}
-                        className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-all"
+                        className="flex items-center gap-1 text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all"
                     >
                     <Sparkles size={14} /> <span className="hidden md:inline">{isAnalyzing ? '分析中...' : '智能简报'}</span>
                     </button>
@@ -473,7 +507,7 @@ const MatterBoard: React.FC<Props> = ({
                         onUpdate({...matter, archived: isArchived});
                         if(isArchived) onBack();
                         }}
-                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         title={matter.archived ? "已归档" : "归档"}
                     >
                         <Archive size={18} />
@@ -501,15 +535,17 @@ const MatterBoard: React.FC<Props> = ({
             
             {/* Col 1: Stages */}
             <div className={`
-                flex-1 md:flex-none w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col 
-                overflow-y-auto overscroll-y-contain
+                flex-1 md:flex-none w-full md:w-64 
+                bg-slate-50 dark:bg-slate-900 
+                border-r border-slate-200 dark:border-slate-800 
+                flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('STAGES')} md:flex
             `}>
-                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-0 md:static z-10 backdrop-blur-md">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段</span>
+                <div className={columnHeaderClass}>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">阶段</span>
                     <button 
                       onClick={() => setIsAddingStage(true)} 
-                      className="text-slate-500 hover:text-blue-600 p-1.5 rounded hover:bg-slate-200 transition-colors"
+                      className="text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                       title="添加阶段"
                     >
                       <Plus size={16}/>
@@ -526,7 +562,9 @@ const MatterBoard: React.FC<Props> = ({
                                 key={stage.id}
                                 className={`
                                     group flex flex-col px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
-                                    ${isSelected ? 'bg-white shadow-sm border border-slate-100' : 'border border-transparent hover:bg-slate-200/50 active:bg-slate-100'}
+                                    ${isSelected 
+                                        ? 'bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700' 
+                                        : 'border border-transparent hover:bg-slate-200/50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800'}
                                 `}
                                 onClick={() => { 
                                     setSelectedStageId(stage.id); 
@@ -536,7 +574,7 @@ const MatterBoard: React.FC<Props> = ({
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                                        <span className={`flex items-center justify-center w-5 h-5 rounded text-[10px] shrink-0 ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
+                                        <span className={`flex items-center justify-center w-5 h-5 rounded text-[10px] shrink-0 ${isSelected ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
                                             {idx + 1}
                                         </span>
                                         {isEditing ? (
@@ -547,11 +585,11 @@ const MatterBoard: React.FC<Props> = ({
                                               onBlur={saveStageName}
                                               onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
                                               onClick={(e) => e.stopPropagation()}
-                                              className="w-full bg-white border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800"
+                                              className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100"
                                             />
                                         ) : (
                                             <span 
-                                                className={`truncate font-medium ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}
+                                                className={`truncate font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`}
                                                 onDoubleClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
@@ -560,22 +598,31 @@ const MatterBoard: React.FC<Props> = ({
                                             >{stage.title}</span>
                                         )}
                                     </div>
-                                    <ChevronRight size={16} className="text-slate-300 md:hidden" />
+                                    <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 md:hidden" />
                                 </div>
                                 
-                                {/* Stage Date Display/Input */}
-                                <div className="flex items-center mt-1 ml-7">
-                                    <input 
-                                        type="date"
-                                        className="bg-transparent text-[10px] text-slate-400 focus:text-slate-700 outline-none cursor-pointer"
-                                        value={stage.dueDate ? new Date(stage.dueDate).toISOString().split('T')[0] : ''}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => updateStageDate(stage.id, e.target.value)}
-                                    />
+                                {/* Stage Date Display/Input - ICON ONLY MODE */}
+                                <div className="flex items-center mt-2 ml-7 relative group/date h-5">
+                                    <div className="relative flex items-center justify-center p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                                        <Calendar size={14} className={`shrink-0 ${stage.dueDate ? 'text-blue-500 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600 group-hover/date:text-blue-400'}`}/>
+                                        <input 
+                                            type="date"
+                                            className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                                            value={stage.dueDate ? new Date(stage.dueDate).toISOString().split('T')[0] : ''}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => updateStageDate(stage.id, e.target.value)}
+                                            title={stage.dueDate ? `截止: ${new Date(stage.dueDate).toLocaleDateString()}` : "设置截止日期"}
+                                        />
+                                    </div>
+                                    {stage.dueDate && (
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5 pointer-events-none">
+                                            {new Date(stage.dueDate).toLocaleDateString(undefined, {month:'numeric', day:'numeric'})}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {!isEditing && (
-                                    <div className="absolute right-2 top-2 hidden md:group-hover:flex items-center gap-1 bg-white/80 rounded shadow-sm border border-slate-100">
+                                    <div className="absolute right-2 top-2 hidden md:group-hover:flex items-center gap-1 bg-white/80 dark:bg-slate-700/80 rounded shadow-sm border border-slate-100 dark:border-slate-600">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); startEditingStage(stage); }}
                                             className="text-slate-400 hover:text-blue-600 p-1"
@@ -596,10 +643,10 @@ const MatterBoard: React.FC<Props> = ({
 
                     {isAddingStage && (
                       <div className="px-2 py-1 animate-fadeIn">
-                        <div className="bg-white border border-blue-300 rounded-md p-2 shadow-sm">
+                        <div className="bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-md p-2 shadow-sm">
                           <input
                             ref={newStageInputRef}
-                            className="w-full text-sm outline-none placeholder-slate-300"
+                            className="w-full text-sm outline-none placeholder-slate-300 bg-transparent text-slate-800 dark:text-slate-100"
                             placeholder="输入阶段名称..."
                             value={newStageName}
                             onChange={(e) => setNewStageName(e.target.value)}
@@ -616,18 +663,20 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* Col 2: Task List */}
             <div className={`
-                flex-1 md:flex-none w-full md:w-80 bg-white border-r border-slate-200 flex-col 
-                overflow-y-auto overscroll-y-contain
+                flex-1 md:flex-none w-full md:w-80 
+                bg-white dark:bg-slate-800 
+                border-r border-slate-200 dark:border-slate-700 
+                flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('TASKS')} md:flex
             `}>
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white/80 backdrop-blur-md sticky top-0 md:static z-10">
-                    <h2 className="font-bold text-slate-800 truncate max-w-[160px]" title={activeStage?.title}>
+                <div className={columnHeaderClass}>
+                    <h2 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[160px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
                     </h2>
                     <button 
                         disabled={!selectedStageId}
                         onClick={addTask}
-                        className="text-xs flex items-center gap-1 bg-slate-900 text-white px-2.5 py-1.5 rounded hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
+                        className="text-xs flex items-center gap-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-2.5 py-1.5 rounded hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-50 transition-colors shadow-sm"
                     >
                         <Plus size={12} /> 新建
                     </button>
@@ -639,10 +688,10 @@ const MatterBoard: React.FC<Props> = ({
                     ) : activeStage.tasks.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-slate-400 text-sm mb-4">此阶段暂无任务</p>
-                            <button onClick={addTask} className="text-blue-600 text-sm hover:underline">创建一个？</button>
+                            <button onClick={addTask} className="text-blue-600 dark:text-blue-400 text-sm hover:underline">创建一个？</button>
                         </div>
                     ) : (
-                        <div className="divide-y divide-slate-50">
+                        <div className="divide-y divide-slate-50 dark:divide-slate-700">
                             {activeStage.tasks.map((task, taskIdx) => {
                                 const isSelected = task.id === selectedTaskId;
                                 const isEditing = editingTaskId === task.id;
@@ -657,8 +706,10 @@ const MatterBoard: React.FC<Props> = ({
                                             }
                                         }}
                                         className={`
-                                            group p-4 cursor-pointer transition-colors border-l-2 relative
-                                            ${isSelected ? 'bg-blue-50/30 border-blue-500' : 'bg-white hover:bg-slate-50 border-transparent'}
+                                            group p-4 cursor-pointer transition-colors relative
+                                            ${isSelected 
+                                                ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-blue-500' 
+                                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-transparent'}
                                         `}
                                     >
                                         <div className="flex justify-between items-start mb-2 pr-4">
@@ -666,7 +717,7 @@ const MatterBoard: React.FC<Props> = ({
                                             
                                             {/* Due Date Indicator (Small) */}
                                             {task.dueDate && (
-                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                                                     <Calendar size={10} />
                                                     {formatDate(task.dueDate)}
                                                 </div>
@@ -686,12 +737,12 @@ const MatterBoard: React.FC<Props> = ({
                                                       onBlur={saveTaskName}
                                                       onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
                                                       onClick={(e) => e.stopPropagation()}
-                                                      className="w-full text-sm font-medium p-1 border border-blue-400 rounded outline-none"
+                                                      className="w-full text-sm font-medium p-1 border border-blue-400 rounded outline-none bg-white dark:bg-slate-700 dark:text-slate-100"
                                                     />
                                                 </div>
                                             ) : (
                                                 <div 
-                                                    className={`text-sm pr-6 flex-1 ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-700'}`}
+                                                    className={`text-sm pr-6 flex-1 ${isSelected ? 'text-slate-900 dark:text-slate-100 font-medium' : 'text-slate-700 dark:text-slate-300'}`}
                                                     onDoubleClick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
@@ -710,7 +761,7 @@ const MatterBoard: React.FC<Props> = ({
                                                     type="button"
                                                     onMouseDown={(e) => e.stopPropagation()} 
                                                     onClick={(e) => { e.stopPropagation(); startEditingTask(task); }}
-                                                    className="p-1 rounded hover:bg-blue-100 text-slate-300 hover:text-blue-600 bg-white/50"
+                                                    className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-slate-300 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 bg-white/50 dark:bg-slate-700/50"
                                                 >
                                                     <Edit2 size={14} className="pointer-events-none" />
                                                 </button>
@@ -718,7 +769,7 @@ const MatterBoard: React.FC<Props> = ({
                                                     type="button"
                                                     onMouseDown={(e) => e.stopPropagation()} 
                                                     onClick={(e) => { e.stopPropagation(); deleteTask(activeStage.id, task.id); }}
-                                                    className="p-1 rounded hover:bg-red-100 text-slate-300 hover:text-red-600 bg-white/50"
+                                                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-300 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-white/50 dark:bg-slate-700/50"
                                                 >
                                                     <Trash2 size={14} className="pointer-events-none" />
                                                 </button>
@@ -734,7 +785,8 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* Col 3: Task Details */}
             <div className={`
-                flex-1 w-full bg-white flex-col min-w-0 
+                flex-1 w-full bg-white dark:bg-slate-900 
+                flex-col min-w-0 
                 overflow-y-auto overscroll-y-contain
                 ${getColVisibility('DETAILS')} md:flex
             `}>
@@ -748,7 +800,7 @@ const MatterBoard: React.FC<Props> = ({
                         }}
                     />
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-300 bg-slate-50/30">
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 bg-slate-50/30 dark:bg-slate-800/20">
                         <Briefcase size={48} className="mb-4 opacity-20" />
                         <p className="text-sm">选择一个任务开始处理</p>
                     </div>
