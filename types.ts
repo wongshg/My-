@@ -12,6 +12,7 @@ export enum TaskStatus {
 export interface Material {
   id: string;
   name: string;
+  category?: 'REFERENCE' | 'DELIVERABLE'; // REFERENCE: Template files; DELIVERABLE: Work outputs
   isReady: boolean;
   note?: string;
   // File metadata

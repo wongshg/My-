@@ -4,6 +4,8 @@ import { ALL_TEMPLATES } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
 import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Settings, Upload, Download } from 'lucide-react';
+import JSZip from 'jszip';
+import { getFile, saveFile } from './services/storage';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -182,6 +184,7 @@ const App: React.FC = () => {
 
   // Settings / Backup Modal
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProcessingBackup, setIsProcessingBackup] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Apply Theme & Update Meta Tag for Mobile Status Bar
@@ -265,49 +268,125 @@ const App: React.FC = () => {
       setTargetTaskId(taskId);
   };
 
-  // --- Data Backup & Restore ---
-  const handleExportData = () => {
-      const data = {
-          version: 1,
-          date: new Date().toISOString(),
-          matters,
-          templates
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Orbit_Backup_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+  // --- Data Backup & Restore (Full Zip with Files) ---
+  const handleExportData = async () => {
+      setIsProcessingBackup(true);
+      try {
+          const zip = new JSZip();
+          
+          // 1. Export Data JSON
+          const data = {
+              version: 1,
+              date: new Date().toISOString(),
+              matters,
+              templates
+          };
+          zip.file("data.json", JSON.stringify(data, null, 2));
+
+          // 2. Export All Referenced Files
+          const assetsFolder = zip.folder("assets");
+          if (assetsFolder) {
+              const fileIds = new Set<string>();
+              
+              const collectFileIds = (list: any[]) => {
+                  list.forEach(m => {
+                      m.stages.forEach((s: Stage) => {
+                          s.tasks.forEach((t: Task) => {
+                              t.materials.forEach(mat => {
+                                  if (mat.fileId) fileIds.add(mat.fileId);
+                              });
+                          });
+                      });
+                  });
+              };
+
+              collectFileIds(matters);
+              collectFileIds(templates);
+
+              for (const fid of fileIds) {
+                  const fileBlob = await getFile(fid);
+                  if (fileBlob) {
+                      assetsFolder.file(fid, fileBlob);
+                  }
+              }
+          }
+
+          // 3. Generate Zip
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Orbit_FullBackup_${new Date().toISOString().split('T')[0]}.zip`;
+          a.click();
+          URL.revokeObjectURL(url);
+      } catch (e) {
+          console.error(e);
+          alert("备份失败，请稍后重试");
+      } finally {
+          setIsProcessingBackup(false);
+      }
   };
 
-  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-          try {
-              const json = JSON.parse(event.target?.result as string);
-              if (json.matters && Array.isArray(json.matters)) {
-                  setMatters(json.matters);
-                  saveMatters(json.matters);
-              }
-              if (json.templates && Array.isArray(json.templates)) {
-                  setTemplates(json.templates);
-                  saveTemplates(json.templates);
-              }
-              alert(`恢复成功！\n包含 ${json.matters?.length || 0} 个事项，${json.templates?.length || 0} 个模板。`);
-              setIsSettingsOpen(false);
-          } catch (err) {
-              alert("文件格式错误，无法导入。");
-              console.error(err);
+      setIsProcessingBackup(true);
+      try {
+          const zip = await JSZip.loadAsync(file);
+          
+          // 1. Read Data JSON
+          const jsonFile = zip.file("data.json");
+          if (!jsonFile) throw new Error("无效的备份文件：缺少 data.json");
+          
+          const jsonStr = await jsonFile.async("string");
+          const json = JSON.parse(jsonStr);
+
+          // 2. Restore Files
+          const assetsFolder = zip.folder("assets");
+          let fileCount = 0;
+          if (assetsFolder) {
+              const filePromises: Promise<void>[] = [];
+              assetsFolder.forEach((relativePath, zipEntry) => {
+                  filePromises.push(async function() {
+                      const blob = await zipEntry.async("blob");
+                      // The filename in assets folder is the ID
+                      const fileId = zipEntry.name.split('/').pop(); 
+                      if (fileId) {
+                         // We need to create a File object to store properly with name/type if possible, 
+                         // but storage.ts just stores Blob/File.
+                         // However, the original File object had name/type properties. 
+                         // `blob` from zip might lose original mime type if not stored carefully, 
+                         // but we only store the binary. The metadata (name/type) is in the JSON (Material object).
+                         // So storing the blob under the ID is sufficient.
+                         await saveFile(fileId, blob as File); 
+                         fileCount++;
+                      }
+                  }());
+              });
+              await Promise.all(filePromises);
           }
-      };
-      reader.readAsText(file);
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
+
+          // 3. Restore State
+          if (json.matters && Array.isArray(json.matters)) {
+              setMatters(json.matters);
+              saveMatters(json.matters);
+          }
+          if (json.templates && Array.isArray(json.templates)) {
+              setTemplates(json.templates);
+              saveTemplates(json.templates);
+          }
+
+          alert(`恢复成功！\n- 事项：${json.matters?.length || 0}\n- 模板：${json.templates?.length || 0}\n- 文件：${fileCount}`);
+          setIsSettingsOpen(false);
+
+      } catch (err) {
+          alert("文件格式错误或损坏，无法恢复。");
+          console.error(err);
+      } finally {
+          setIsProcessingBackup(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+      }
   };
 
 
@@ -323,7 +402,7 @@ const App: React.FC = () => {
     if (!matterToTemplate || !templateName) return;
     
     // Clean up stages but PRESERVE FILES if they exist
-    const cleanStages = matterToTemplate.stages.map(s => ({
+    const cleanStages: Stage[] = matterToTemplate.stages.map(s => ({
       ...s,
       tasks: s.tasks.map(t => ({
         ...t,
@@ -333,7 +412,10 @@ const App: React.FC = () => {
         materials: t.materials.map(m => ({
             ...m, 
             isReady: !!m.fileId, // Keep ready if it has a file
-            // PRESERVE FILE METADATA SO TEMPLATES CAN HAVE ATTACHMENTS
+            // Make sure materials in templates are marked as REFERENCE by default if they have files?
+            // Or keep original category? 
+            // If I save a matter as template, the existing deliverables become references for the new template.
+            category: 'REFERENCE' as const
         }))
       }))
     }));
@@ -391,7 +473,6 @@ const App: React.FC = () => {
               materials: t.materials.map(mat => ({
                   ...mat,
                   isReady: !!mat.fileId, // Keep file state if file exists
-                  // Preserve fileId/fileName etc. so the template keeps the files
               }))
           }))
       }));
@@ -564,39 +645,45 @@ const App: React.FC = () => {
   };
 
   const SettingsModal = () => (
-      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}>
+      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => !isProcessingBackup && setIsSettingsOpen(false)}>
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                   <Settings size={20} /> 数据与备份
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                  您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。
+                  您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。<br/>
+                  <span className="text-xs text-slate-400 opacity-80 mt-1 block">备份包包含所有事项数据及附件文件。</span>
               </p>
               
               <div className="space-y-3">
                   <button 
                     onClick={handleExportData}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                    disabled={isProcessingBackup}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
                   >
-                      <Download size={18} /> 导出备份数据 (.json)
+                      {isProcessingBackup ? '处理中...' : <><Download size={18} /> 导出完整备份 (.zip)</>}
                   </button>
                   
                   <div className="relative">
-                      <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                          <Upload size={18} /> 恢复数据
+                      <button 
+                        disabled={isProcessingBackup}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                      >
+                         {isProcessingBackup ? '处理中...' : <><Upload size={18} /> 恢复数据 (.zip)</>}
                       </button>
                       <input 
                         ref={fileInputRef}
                         type="file" 
-                        accept=".json"
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        accept=".zip"
+                        disabled={isProcessingBackup}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
                         onChange={handleImportData}
                       />
                   </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <button onClick={() => setIsSettingsOpen(false)} className="text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm">关闭</button>
+                  <button onClick={() => setIsSettingsOpen(false)} disabled={isProcessingBackup} className="text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm disabled:opacity-50">关闭</button>
               </div>
           </div>
       </div>
@@ -660,7 +747,8 @@ const App: React.FC = () => {
                     onChange={(e) => setTemplateName(e.target.value)}
                  />
                  <p className="text-xs text-slate-500 mt-2">
-                   将保存当前事项的阶段、任务结构。状态和备注信息不会被保存。
+                   将保存当前事项的阶段、任务结构。状态和备注信息不会被保存。<br/>
+                   <span className="text-blue-500 font-medium">注意：所有当前附件将自动转换为“参考模板”资料。</span>
                  </p>
               </div>
               <div className="flex justify-end gap-2">

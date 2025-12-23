@@ -1,20 +1,22 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, TaskStatus, Material, StatusUpdate } from '../types';
-import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package } from 'lucide-react';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
 
 interface Props {
   task: Task;
-  matterDueDate?: number; // Optional validation
+  matterDueDate?: number;
   onUpdate: (updatedTask: Task) => void;
   onDelete: () => void;
+  isTemplateMode?: boolean;
 }
 
-const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDelete }) => {
+const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDelete, isTemplateMode = false }) => {
   const [localTitle, setLocalTitle] = useState(task.title);
   
   // Add Material State
   const [isAddingMaterial, setIsAddingMaterial] = useState(false);
+  const [addingCategory, setAddingCategory] = useState<'REFERENCE' | 'DELIVERABLE'>('DELIVERABLE');
   const [newMaterialName, setNewMaterialName] = useState('');
   const materialInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +114,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       const newMat: Material = { 
         id: Math.random().toString(36).substr(2, 9), 
         name: newMaterialName.trim(), 
+        category: addingCategory,
         isReady: false 
       };
       onUpdate({ ...task, materials: [...task.materials, newMat], lastUpdated: Date.now() });
@@ -121,12 +124,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   };
 
   const deleteMaterial = async (mat: Material) => {
-    // NOTE: To support templates where multiple matters might share the same file ID (cloned from template),
-    // we do NOT delete the file from IndexedDB here. We only remove the reference from this task.
-    // This effectively orphans the file in DB if no one else uses it, but prevents data loss in cloned matters.
-    // if (mat.fileId) {
-    //    await deleteFileFromDB(mat.fileId);
-    // }
     onUpdate({ ...task, materials: task.materials.filter(m => m.id !== mat.id), lastUpdated: Date.now() });
   };
 
@@ -171,10 +168,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   };
 
   const deleteFileAttachment = async (matId: string, fileId?: string) => {
-      // NOTE: Safety measure for templates. See deleteMaterial note above.
-      // if (fileId) {
-      //     await deleteFileFromDB(fileId);
-      // }
       const newMaterials = task.materials.map(m => 
           m.id === matId ? { ...m, fileId: undefined, fileName: undefined, fileType: undefined, fileSize: undefined } : m
       );
@@ -265,6 +258,117 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
           default: return "添加新的进展记录...";
       }
   };
+
+  // --- Split Materials ---
+  // Default legacy materials to DELIVERABLE unless they have a file and we are in template mode (which assumes we are building refs)
+  // Actually, safe default is DELIVERABLE.
+  const referenceMaterials = task.materials.filter(m => m.category === 'REFERENCE');
+  const deliverableMaterials = task.materials.filter(m => m.category !== 'REFERENCE');
+
+  const renderMaterialList = (list: Material[], type: 'REFERENCE' | 'DELIVERABLE') => {
+      const isRef = type === 'REFERENCE';
+      
+      // In non-template mode, Reference section is View/Download Only (mostly).
+      // But we still allow upload if user wants to add ad-hoc reference? 
+      // User requested "placed separately".
+      // Let's allow editing for both, but visually distinguish.
+      
+      if (list.length === 0 && !isAddingMaterial) {
+          return <div className="text-sm text-slate-300 italic py-1">暂无{isRef ? '参考文件' : '交付产物'}</div>;
+      }
+
+      return (
+          <div className="space-y-2">
+            {list.map(m => (
+               <div 
+                  key={m.id}
+                  // Only allow drag-drop upload if:
+                  // 1. It's DELIVERABLE
+                  // 2. OR It's REFERENCE and we are in Template Mode (to upload the template file)
+                  onDragEnter={(e) => {
+                      if (!isRef || isTemplateMode) handleDragEnter(e, m.id)
+                  }}
+                  onDragLeave={(e) => {
+                      if (!isRef || isTemplateMode) handleDragLeave(e, m.id)
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => {
+                      if (!isRef || isTemplateMode) handleDrop(e, m.id)
+                  }}
+                  className={`group flex items-center gap-3 p-3 rounded-lg border transition-all relative ${
+                      dragActiveId === m.id 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 border-dashed z-10' 
+                      : 'border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
+                  }`}
+               >
+                  {dragActiveId === m.id && (
+                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 rounded-lg pointer-events-none">
+                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2"><Upload size={16}/> 松开以上传</span>
+                     </div>
+                  )}
+
+                  <button 
+                    onClick={() => toggleMaterial(m.id)}
+                    // References in non-template mode are typically read-only regarding 'readiness', but users might want to tick them off as "Read".
+                    className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
+                  >
+                    {m.isReady ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                  </button>
+                  
+                  <div className="flex-1 min-w-0">
+                      <div className={`text-sm ${m.isReady ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {m.name}
+                      </div>
+                      
+                      <div className="mt-1 flex items-center gap-2 h-5">
+                          {m.fileName ? (
+                              <>
+                                <button 
+                                  onClick={() => handleFileDownload(m)}
+                                  className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline max-w-[150px] truncate"
+                                  title="点击下载"
+                                >
+                                    <FileIcon size={10} /> {m.fileName}
+                                </button>
+                                {/* Allow delete if: Deliverable OR (Reference AND TemplateMode) */}
+                                {(!isRef || isTemplateMode) && (
+                                    <button 
+                                    onClick={() => deleteFileAttachment(m.id, m.fileId)}
+                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="删除文件"
+                                    >
+                                    <X size={10} />
+                                    </button>
+                                )}
+                              </>
+                          ) : (
+                              // Allow upload if: Deliverable OR (Reference AND TemplateMode)
+                              (!isRef || isTemplateMode) ? (
+                                <label className="cursor-pointer text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 transition-colors">
+                                    <Upload size={10} /> 上传文件 (或拖拽至此)
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={(e) => handleFileUpload(m.id, e)}
+                                    />
+                                </label>
+                              ) : (
+                                <span className="text-[10px] text-slate-300 italic">暂无文件</span>
+                              )
+                          )}
+                      </div>
+                  </div>
+
+                  {(!isRef || isTemplateMode) && (
+                      <button onClick={() => deleteMaterial(m)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 shrink-0">
+                        <Trash2 size={16} />
+                      </button>
+                  )}
+               </div>
+             ))}
+          </div>
+      );
+  }
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-900 animate-fadeIn">
@@ -380,13 +484,80 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            />
         </div>
 
+        {/* Materials Sections */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+           
+           {/* Section 1: Reference Materials */}
+           <div className="mb-6">
+               <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                        <FileText size={14} /> 参考资料 / 模板
+                    </label>
+                    {isTemplateMode && !isAddingMaterial && (
+                        <button 
+                            onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
+                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                        >
+                            <Plus size={12} /> 添加参考文件
+                        </button>
+                    )}
+               </div>
+               {renderMaterialList(referenceMaterials, 'REFERENCE')}
+           </div>
+
+           {/* Section 2: Deliverables */}
+           <div>
+               <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+                        <Package size={14} /> 所需产物 / 交付物
+                    </label>
+                    {!isAddingMaterial && (
+                        <button 
+                            onClick={() => { setIsAddingMaterial(true); setAddingCategory('DELIVERABLE'); }} 
+                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                        >
+                            <Plus size={12} /> 添加产物项
+                        </button>
+                    )}
+               </div>
+               {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
+           </div>
+
+           {/* Add Material Input */}
+            {isAddingMaterial && (
+            <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+                <Circle size={20} className="text-slate-300" />
+                <div className="flex-1">
+                    <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">
+                        {addingCategory === 'REFERENCE' ? '新增参考资料' : '新增交付产物'}
+                    </div>
+                    <input
+                        ref={materialInputRef}
+                        value={newMaterialName}
+                        onChange={(e) => setNewMaterialName(e.target.value)}
+                        placeholder="输入名称 (Enter确认)"
+                        className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent"
+                        onKeyDown={(e) => {
+                        if (e.key === 'Enter') confirmAddMaterial();
+                        if (e.key === 'Escape') setIsAddingMaterial(false);
+                        }}
+                    />
+                </div>
+                <div className="flex items-center gap-1">
+                    <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+                    <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
+                </div>
+            </div>
+            )}
+        </div>
+
         {/* Status Notes Timeline */}
-        <div>
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <MessageSquare size={14} /> 当前情况 / 判断依据 / 备注
+              <MessageSquare size={14} /> 当前情况 / 备注
            </label>
            
-           {/* New Input - Dynamic Styling */}
+           {/* New Input */}
            <div className={`mb-6 p-3 rounded-lg border transition-all ${getInputTheme()}`}>
               <textarea
                 ref={noteInputRef}
@@ -443,120 +614,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
               {(!task.statusUpdates?.length && !task.statusNote) && (
                   <div className="text-xs text-slate-400 pl-6 italic pt-2">暂无记录</div>
               )}
-           </div>
-        </div>
-
-        {/* Materials */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-           <div className="flex items-center justify-between mb-3">
-             <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                <FileText size={14} /> 所需材料 / 产物
-             </label>
-             {!isAddingMaterial && (
-               <button 
-                 onClick={() => setIsAddingMaterial(true)} 
-                 className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-               >
-                 <Plus size={12} /> 添加材料
-               </button>
-             )}
-           </div>
-           
-           <div className="space-y-2">
-             {task.materials.length === 0 && !isAddingMaterial && (
-               <div className="text-sm text-slate-300 italic">无需特定材料</div>
-             )}
-             
-             {task.materials.map(m => (
-               <div 
-                  key={m.id}
-                  // Drag and Drop Logic
-                  onDragEnter={(e) => handleDragEnter(e, m.id)}
-                  onDragLeave={(e) => handleDragLeave(e, m.id)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, m.id)}
-                  className={`group flex items-center gap-3 p-3 rounded-lg border transition-all relative ${
-                      dragActiveId === m.id 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 border-dashed z-10' 
-                      : 'border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
-                  }`}
-               >
-                  {dragActiveId === m.id && (
-                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 rounded-lg pointer-events-none">
-                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2"><Upload size={16}/> 松开以上传</span>
-                     </div>
-                  )}
-
-                  <button 
-                    onClick={() => toggleMaterial(m.id)}
-                    className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
-                  >
-                    {m.isReady ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                  </button>
-                  
-                  <div className="flex-1 min-w-0">
-                      <div className={`text-sm ${m.isReady ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                        {m.name}
-                      </div>
-                      {/* File Info / Action Area */}
-                      <div className="mt-1 flex items-center gap-2 h-5">
-                          {m.fileName ? (
-                              <>
-                                <button 
-                                  onClick={() => handleFileDownload(m)}
-                                  className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline max-w-[150px] truncate"
-                                  title="点击下载"
-                                >
-                                    <FileIcon size={10} /> {m.fileName}
-                                </button>
-                                <button 
-                                   onClick={() => deleteFileAttachment(m.id, m.fileId)}
-                                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                   title="删除文件"
-                                >
-                                   <X size={10} />
-                                </button>
-                              </>
-                          ) : (
-                              <label className="cursor-pointer text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 transition-colors">
-                                  <Upload size={10} /> 上传文件 (或拖拽至此)
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    onChange={(e) => handleFileUpload(m.id, e)}
-                                  />
-                              </label>
-                          )}
-                      </div>
-                  </div>
-
-                  <button onClick={() => deleteMaterial(m)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 shrink-0">
-                    <Trash2 size={16} />
-                  </button>
-               </div>
-             ))}
-
-             {/* Add Material Input */}
-             {isAddingMaterial && (
-                <div className="flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
-                   <Circle size={20} className="text-slate-300" />
-                   <input
-                      ref={materialInputRef}
-                      value={newMaterialName}
-                      onChange={(e) => setNewMaterialName(e.target.value)}
-                      placeholder="材料名称 (Enter确认)"
-                      className="flex-1 text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') confirmAddMaterial();
-                        if (e.key === 'Escape') setIsAddingMaterial(false);
-                      }}
-                   />
-                   <div className="flex items-center gap-1">
-                      <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
-                      <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
-                   </div>
-                </div>
-             )}
            </div>
         </div>
 

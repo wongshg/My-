@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Matter, Task, Stage, TaskStatus } from '../types';
+import { Matter, Task, Stage, TaskStatus, Material } from '../types';
 import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
 import { 
   Plus, ArrowLeft, Edit2, Archive, Sparkles, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
-  Moon, Sun, Monitor
+  Moon, Sun, Monitor, FileText, Package
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -53,6 +53,7 @@ const MatterBoard: React.FC<Props> = ({
 
   // Export State
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Add Stage State
   const [isAddingStage, setIsAddingStage] = useState(false);
@@ -106,6 +107,12 @@ const MatterBoard: React.FC<Props> = ({
 
   // Mobile Navigation Helpers
   const goMobileBack = () => {
+      // FIX: On Desktop (width >= 768px), always go back to Dashboard
+      if (window.innerWidth >= 768) {
+          onBack();
+          return;
+      }
+
       if (mobileView === 'DETAILS') {
           setMobileView('TASKS');
       } else if (mobileView === 'TASKS') {
@@ -165,8 +172,9 @@ const MatterBoard: React.FC<Props> = ({
     setIsAnalyzing(false);
   };
 
-  const exportMaterials = async () => {
+  const exportMaterials = async (type: 'ALL' | 'REFERENCE' | 'DELIVERABLE') => {
       setIsExporting(true);
+      setShowExportMenu(false);
       try {
           const zip = new JSZip();
           const matterFolder = zip.folder(matter.title.replace(/[\\/:*?"<>|]/g, '_')) || zip;
@@ -181,7 +189,14 @@ const MatterBoard: React.FC<Props> = ({
 
                   let hasFiles = false;
                   for (const mat of task.materials) {
-                      if (mat.fileId) {
+                      // Filter based on type
+                      const isRef = mat.category === 'REFERENCE';
+                      const shouldInclude = 
+                          type === 'ALL' || 
+                          (type === 'REFERENCE' && isRef) || 
+                          (type === 'DELIVERABLE' && !isRef);
+
+                      if (shouldInclude && mat.fileId) {
                           const file = await getFile(mat.fileId);
                           if (file) {
                               taskFolder.file(file.name, file);
@@ -189,6 +204,7 @@ const MatterBoard: React.FC<Props> = ({
                           }
                       }
                   }
+                  // Remove empty task folders if we want to be clean, but keeping structure is fine
               }
           }
 
@@ -196,7 +212,8 @@ const MatterBoard: React.FC<Props> = ({
           const url = window.URL.createObjectURL(content);
           const a = document.createElement("a");
           a.href = url;
-          a.download = `${matter.title}_材料.zip`;
+          const typeLabel = type === 'REFERENCE' ? '_参考模板' : type === 'DELIVERABLE' ? '_交付产物' : '_全部材料';
+          a.download = `${matter.title}${typeLabel}.zip`;
           a.click();
           window.URL.revokeObjectURL(url);
       } catch (e) {
@@ -475,16 +492,33 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
 
             {!isTemplateMode && (
-                <>
+                <div className="relative hidden md:block">
                     <button 
-                        onClick={exportMaterials}
+                        onClick={() => setShowExportMenu(!showExportMenu)}
                         disabled={isExporting}
-                        className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors"
+                        className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors"
                     >
                         <Download size={14} /> {isExporting ? '打包中...' : '下载材料'}
                     </button>
-                    <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-                </>
+                    {showExportMenu && (
+                         <>
+                            <div className="fixed inset-0 z-30" onClick={() => setShowExportMenu(false)}></div>
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-40 animate-slideDown">
+                                <button onClick={() => exportMaterials('REFERENCE')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                                    <FileText size={14} className="text-blue-500" /> 参考模板材料
+                                </button>
+                                <button onClick={() => exportMaterials('DELIVERABLE')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                                    <Package size={14} className="text-emerald-500" /> 交付产物/成果
+                                </button>
+                                <div className="h-[1px] bg-slate-100 dark:bg-slate-700 my-1"></div>
+                                <button onClick={() => exportMaterials('ALL')} className="w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                                    <Download size={14} className="text-slate-500" /> 全部下载
+                                </button>
+                            </div>
+                         </>
+                    )}
+                    <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 h-4 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
+                </div>
             )}
 
             {isTemplateMode ? (
@@ -497,7 +531,7 @@ const MatterBoard: React.FC<Props> = ({
             ) : (
                 <button 
                     onClick={() => onSaveTemplate(matter)}
-                    className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors"
+                    className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors ml-4"
                     title="Save structure as template"
                 >
                     <LayoutTemplate size={14} /> 另存为模板
@@ -806,11 +840,12 @@ const MatterBoard: React.FC<Props> = ({
                 {activeTask ? (
                     <TaskDetailPane 
                         task={activeTask}
-                        matterDueDate={matter.dueDate} // Pass matter due date for validation
+                        matterDueDate={matter.dueDate} 
                         onUpdate={handleTaskUpdate}
                         onDelete={() => {
                             if(activeStage) deleteTask(activeStage.id, activeTask.id);
                         }}
+                        isTemplateMode={isTemplateMode}
                     />
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 bg-slate-50/30 dark:bg-slate-800/20">
