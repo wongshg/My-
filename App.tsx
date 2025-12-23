@@ -3,7 +3,7 @@ import { Matter, Template, TaskStatus, Task, Stage } from './types';
 import { ALL_TEMPLATES } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Settings, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
 import { getFile, saveFile } from './services/storage';
 
@@ -190,7 +190,8 @@ const App: React.FC = () => {
   // Apply Theme & Update Meta Tag for Mobile Status Bar
   useEffect(() => {
      const root = window.document.documentElement;
-     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+     const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+     const isDark = theme === 'dark' || (theme === 'system' && isSystemDark);
      
      if (isDark) {
          root.classList.add('dark');
@@ -199,11 +200,21 @@ const App: React.FC = () => {
      }
      localStorage.setItem(THEME_KEY, theme);
 
-     // Update <meta name="theme-color">
+     // Update <meta name="theme-color"> for iOS Safari & Android Chrome
      // Light: #f8fafc (slate-50) | Dark: #020617 (slate-950)
      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
      if (metaThemeColor) {
+         // Using the exact background color helps Safari blend the status bar
          metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+     }
+
+     // Also update status bar style for iOS PWA mode
+     const metaStatusBarStyle = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+     if (metaStatusBarStyle) {
+         // black-translucent allows content to go under, but 'default' (white) or 'black' (black) helps with text color contrast in some scenarios.
+         // However, with viewport-fit=cover, 'black-translucent' is usually best, relying on body bg color.
+         // If text color isn't switching, sometimes toggling this helps, but usually theme-color is key.
+         metaStatusBarStyle.setAttribute('content', 'black-translucent');
      }
 
   }, [theme]);
@@ -648,7 +659,7 @@ const App: React.FC = () => {
       <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => !isProcessingBackup && setIsSettingsOpen(false)}>
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                  <Settings size={20} /> 数据与备份
+                  <Database size={20} className="text-slate-500 dark:text-slate-400" /> 数据与备份
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
                   您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。<br/>

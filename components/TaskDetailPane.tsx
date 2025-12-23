@@ -67,14 +67,25 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     if (newStatus === TaskStatus.OTHER && !task.customStatus) {
        updates.customStatus = "自定义状态";
        setIsEditingCustomStatus(true);
+       setCustomStatusText(''); // Clear text so user can type immediately
     }
 
     onUpdate({ ...task, ...updates });
   };
 
+  const startEditingCustom = () => {
+      setIsEditingCustomStatus(true);
+      // Clear text if it matches placeholder to allow fresh input
+      if (customStatusText === '自定义状态') {
+          setCustomStatusText('');
+      }
+  };
+
   const saveCustomStatus = () => {
-     onUpdate({ ...task, customStatus: customStatusText, lastUpdated: Date.now() });
+     const finalStatus = customStatusText.trim() || '自定义状态';
+     onUpdate({ ...task, customStatus: finalStatus, lastUpdated: Date.now() });
      setIsEditingCustomStatus(false);
+     setCustomStatusText(finalStatus);
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -268,17 +279,17 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   const renderMaterialList = (list: Material[], type: 'REFERENCE' | 'DELIVERABLE') => {
       const isRef = type === 'REFERENCE';
       
-      // In non-template mode, Reference section is View/Download Only (mostly).
-      // But we still allow upload if user wants to add ad-hoc reference? 
-      // User requested "placed separately".
-      // Let's allow editing for both, but visually distinguish.
-      
-      if (list.length === 0 && !isAddingMaterial) {
-          return <div className="text-sm text-slate-300 italic py-1">暂无{isRef ? '参考文件' : '交付产物'}</div>;
+      // If reference list is empty and user not adding, HIDE IT completely to save space
+      if (isRef && list.length === 0 && !isAddingMaterial) {
+          return null;
+      }
+
+      if (!isRef && list.length === 0 && !isAddingMaterial) {
+          return <div className="text-sm text-slate-300 italic py-1">暂无交付产物</div>;
       }
 
       return (
-          <div className="space-y-2">
+          <div className="space-y-2 mt-2">
             {list.map(m => (
                <div 
                   key={m.id}
@@ -374,15 +385,17 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     <div className="h-full flex flex-col bg-white dark:bg-slate-900 animate-fadeIn">
       {/* Header Area */}
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start shrink-0">
-        <div className="flex-1 mr-4">
+        <div className="flex-1 mr-4 min-w-0">
           <input 
-            className="w-full text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent"
+            className="w-full text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent truncate"
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
             onBlur={handleTitleBlur}
             placeholder="任务标题..."
           />
-          <div className="flex gap-2 mt-3 flex-wrap items-center">
+          
+          {/* Status Buttons - Single Line / Compact */}
+          <div className="flex gap-1.5 mt-3 flex-wrap items-center">
              {[
                TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, 
                TaskStatus.BLOCKED, TaskStatus.SKIPPED, TaskStatus.EXCEPTION, TaskStatus.OTHER
@@ -390,10 +403,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
               <button
                 key={s}
                 onClick={() => handleStatusChange(s)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                className={`text-[10px] md:text-xs px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${
                   task.status === s
-                    ? 'ring-2 ring-offset-1 ring-slate-400 dark:ring-slate-600 font-semibold shadow-sm'
-                    : 'opacity-60 hover:opacity-100'
+                    ? 'ring-1 ring-offset-1 ring-slate-400 dark:ring-slate-600 font-bold shadow-sm'
+                    : 'opacity-70 hover:opacity-100'
                 } ${
                     s === TaskStatus.PENDING ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' :
                     s === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
@@ -424,10 +437,11 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                          onChange={(e) => setCustomStatusText(e.target.value)}
                          onBlur={saveCustomStatus}
                          onKeyDown={(e) => e.key === 'Enter' && saveCustomStatus()}
-                         className="text-xs px-2 py-1 rounded border border-indigo-300 outline-none w-24 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                         className="text-xs px-2 py-0.5 rounded border border-indigo-300 outline-none w-20 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                         placeholder="输入状态"
                        />
                    ) : (
-                       <button onClick={() => setIsEditingCustomStatus(true)} className="p-1 text-slate-300 hover:text-indigo-600">
+                       <button onClick={startEditingCustom} className="p-0.5 text-slate-300 hover:text-indigo-600">
                            <Edit3 size={12} />
                        </button>
                    )}
@@ -437,13 +451,13 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         </div>
         
         {/* Actions Right Side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
             {/* Due Date Picker (Compact) */}
             <div className="relative flex items-center justify-center p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                  <div className="flex items-center gap-1.5 cursor-pointer">
                     <Calendar size={18} className={`${task.dueDate ? 'text-blue-500' : 'text-slate-300 hover:text-slate-500'}`} />
                     {task.dueDate && (
-                        <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                        <span className="text-xs font-mono text-slate-600 dark:text-slate-400 hidden sm:inline">
                              {new Date(task.dueDate).toLocaleDateString(undefined, {month:'numeric', day:'numeric'})}
                         </span>
                     )}
@@ -468,46 +482,135 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-6">
         
-        {/* Description */}
-        <div>
-           <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-              任务指引 (标准说明)
-           </label>
-           <textarea
-             value={task.description || ''}
-             onChange={handleDescriptionChange}
-             placeholder="输入此任务的标准操作指引（选填）..."
-             className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 focus:border-blue-500 outline-none text-sm text-slate-600 dark:text-slate-300 py-2 resize-none"
-             rows={2}
-           />
+        {/* 1. MOVED TO TOP: Combined Status Notes & Description */}
+        <div className="flex flex-col xl:flex-row gap-6 lg:gap-8 mb-8">
+            
+            {/* Current Situation (Primary) */}
+            <div className="flex-1 min-w-0">
+                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <MessageSquare size={14} /> 当前情况 / 备注
+                </label>
+                
+                {/* New Input */}
+                <div className={`mb-6 p-3 rounded-lg border transition-all ${getInputTheme()}`}>
+                    <textarea
+                        ref={noteInputRef}
+                        value={newUpdateContent}
+                        onChange={(e) => setNewUpdateContent(e.target.value)}
+                        placeholder={getPlaceholder()}
+                        className="w-full bg-transparent border-none outline-none text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400/70 resize-none mb-2"
+                        rows={2}
+                        onKeyDown={(e) => { if(e.ctrlKey && e.key === 'Enter') addStatusUpdate(); }}
+                    />
+                    <div className="flex justify-end">
+                        <button 
+                            onClick={addStatusUpdate}
+                            disabled={!newUpdateContent.trim()}
+                            className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded text-xs font-medium hover:bg-white hover:text-blue-600 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                            添加记录
+                        </button>
+                    </div>
+                </div>
+
+                {/* Timeline List */}
+                <div className="space-y-4 pl-2 relative">
+                    <div className="absolute left-[5px] top-2 bottom-2 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
+                    
+                    {(task.statusUpdates || []).map((update) => (
+                        <div key={update.id} className="relative pl-6 group">
+                            <div className="absolute left-[2px] top-1.5 w-[7px] h-[7px] rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900 ring-1 ring-slate-100 dark:ring-slate-800"></div>
+                            <div className="flex items-baseline justify-between mb-1">
+                                <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-800 px-1 rounded">{formatTime(update.timestamp)}</span>
+                                <button 
+                                    onClick={() => deleteStatusUpdate(update.id)}
+                                    className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity p-1 cursor-pointer"
+                                    title="删除记录"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                            <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                {update.content}
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Legacy Note Support */}
+                    {task.statusNote && (!task.statusUpdates || task.statusUpdates.length === 0) && (
+                        <div className="relative pl-6">
+                            <div className="absolute left-[2px] top-1.5 w-[7px] h-[7px] rounded-full bg-slate-300 border-2 border-white ring-1 ring-slate-100"></div>
+                            <div className="mb-1"><span className="text-[10px] text-slate-400 italic">历史备注</span></div>
+                            <div className="text-sm text-slate-600 whitespace-pre-wrap">{task.statusNote}</div>
+                        </div>
+                    )}
+                    
+                    {(!task.statusUpdates?.length && !task.statusNote) && (
+                        <div className="text-xs text-slate-400 pl-6 italic pt-2">暂无记录</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Description (Sidebar) */}
+            <div className="w-full xl:w-72 shrink-0">
+                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-100 dark:border-slate-800 h-fit sticky top-0">
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                        任务指引 (标准说明)
+                    </label>
+                    <textarea
+                        value={task.description || ''}
+                        onChange={handleDescriptionChange}
+                        placeholder="输入此任务的标准操作指引（选填）..."
+                        className="w-full bg-transparent border-b border-transparent focus:border-blue-300 dark:focus:border-blue-700 outline-none text-sm text-slate-600 dark:text-slate-300 resize-none leading-relaxed"
+                        rows={6} 
+                    />
+                 </div>
+            </div>
         </div>
 
-        {/* Materials Sections */}
+        {/* 3. Materials Sections */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
            
-           {/* Section 1: Reference Materials */}
-           <div className="mb-6">
-               <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                        <FileText size={14} /> 参考资料 / 模板
-                    </label>
-                    {isTemplateMode && !isAddingMaterial && (
+           {/* Section 1: Reference Materials (Conditional Rendering) */}
+           {(referenceMaterials.length > 0 || isAddingMaterial) ? (
+               <div className="mb-6">
+                   <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                            <FileText size={14} /> 参考资料 / 模板
+                        </label>
+                        {isTemplateMode && !isAddingMaterial && (
+                            <button 
+                                onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                            >
+                                <Plus size={12} /> 添加参考文件
+                            </button>
+                        )}
+                   </div>
+                   {renderMaterialList(referenceMaterials, 'REFERENCE')}
+               </div>
+           ) : (
+                /* Hidden or minimized when empty, unless user is admin/template mode might want to add */
+                isTemplateMode && (
+                    <div className="mb-6 flex justify-between items-center">
+                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <FileText size={14} /> 参考资料 / 模板
+                        </label>
                         <button 
                             onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
-                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                            className="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1"
                         >
-                            <Plus size={12} /> 添加参考文件
+                            <Plus size={12} /> 添加
                         </button>
-                    )}
-               </div>
-               {renderMaterialList(referenceMaterials, 'REFERENCE')}
-           </div>
+                    </div>
+                )
+           )}
 
            {/* Section 2: Deliverables */}
            <div>
-               <div className="flex items-center justify-between mb-3">
+               <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider flex items-center gap-2">
                         <Package size={14} /> 所需产物 / 交付物
                     </label>
@@ -549,72 +652,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                 </div>
             </div>
             )}
-        </div>
-
-        {/* Status Notes Timeline */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-           <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <MessageSquare size={14} /> 当前情况 / 备注
-           </label>
-           
-           {/* New Input */}
-           <div className={`mb-6 p-3 rounded-lg border transition-all ${getInputTheme()}`}>
-              <textarea
-                ref={noteInputRef}
-                value={newUpdateContent}
-                onChange={(e) => setNewUpdateContent(e.target.value)}
-                placeholder={getPlaceholder()}
-                className="w-full bg-transparent border-none outline-none text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400/70 resize-none mb-2"
-                rows={3}
-                onKeyDown={(e) => { if(e.ctrlKey && e.key === 'Enter') addStatusUpdate(); }}
-              />
-              <div className="flex justify-end">
-                  <button 
-                    onClick={addStatusUpdate}
-                    disabled={!newUpdateContent.trim()}
-                    className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded text-xs font-medium hover:bg-white hover:text-blue-600 disabled:opacity-50 transition-colors shadow-sm"
-                  >
-                    添加记录
-                  </button>
-              </div>
-           </div>
-
-           {/* Timeline List */}
-           <div className="space-y-4 pl-2 relative">
-              <div className="absolute left-[5px] top-2 bottom-2 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
-              
-              {(task.statusUpdates || []).map((update) => (
-                  <div key={update.id} className="relative pl-6 group">
-                      <div className="absolute left-[2px] top-1.5 w-[7px] h-[7px] rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900 ring-1 ring-slate-100 dark:ring-slate-800"></div>
-                      <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-800 px-1 rounded">{formatTime(update.timestamp)}</span>
-                          <button 
-                             onClick={() => deleteStatusUpdate(update.id)}
-                             className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity p-1 cursor-pointer"
-                             title="删除记录"
-                          >
-                             <X size={12} />
-                          </button>
-                      </div>
-                      <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                          {update.content}
-                      </div>
-                  </div>
-              ))}
-
-              {/* Legacy Note Support */}
-              {task.statusNote && (!task.statusUpdates || task.statusUpdates.length === 0) && (
-                  <div className="relative pl-6">
-                      <div className="absolute left-[2px] top-1.5 w-[7px] h-[7px] rounded-full bg-slate-300 border-2 border-white ring-1 ring-slate-100"></div>
-                      <div className="mb-1"><span className="text-[10px] text-slate-400 italic">历史备注</span></div>
-                      <div className="text-sm text-slate-600 whitespace-pre-wrap">{task.statusNote}</div>
-                  </div>
-              )}
-              
-              {(!task.statusUpdates?.length && !task.statusNote) && (
-                  <div className="text-xs text-slate-400 pl-6 italic pt-2">暂无记录</div>
-              )}
-           </div>
         </div>
 
       </div>

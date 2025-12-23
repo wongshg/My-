@@ -3,7 +3,7 @@ import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
-  Moon, Sun, Monitor, Settings
+  Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart
 } from 'lucide-react';
 
 interface Props {
@@ -173,20 +173,44 @@ const AttentionGroupCard: React.FC<{
   )
 };
 
-const StatCard = ({ label, value, icon: Icon, color, onClick }: any) => (
-  <div 
-    onClick={onClick}
-    className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm cursor-pointer hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-500 group"
-  >
-      <div className={`p-3 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20 group-hover:scale-110 transition-transform`}>
-          <Icon size={20} className={color.replace('bg-', 'text-').replace('500', '600 dark:text-400')} />
-      </div>
-      <div>
-          <div className="text-2xl font-bold text-slate-800 dark:text-white">{value}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{label}</div>
-      </div>
-  </div>
-);
+// Detailed Stat Card for In Progress & Attention
+const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => {
+    // Count matters by type
+    const breakdown = matters.reduce((acc: any, m: Matter) => {
+        acc[m.type] = (acc[m.type] || 0) + 1;
+        return acc;
+    }, {});
+    
+    // Sort counts descending
+    const sortedTypes = Object.entries(breakdown).sort((a: any, b: any) => b[1] - a[1]);
+
+    return (
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full min-h-[140px]">
+             <div className="flex items-center gap-3 mb-3">
+                <div className={`p-2 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
+                    <Icon size={18} className={color.replace('bg-', 'text-').replace('500', '600 dark:text-400')} />
+                </div>
+                <div className="flex-1">
+                    <div className="text-2xl font-bold text-slate-800 dark:text-white leading-none">{count}</div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-0.5">{label}</div>
+                </div>
+             </div>
+             
+             <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[120px] pr-1">
+                 {sortedTypes.length > 0 ? (
+                     sortedTypes.map(([type, c]: any) => (
+                         <div key={type} className="flex justify-between items-center text-xs">
+                             <span className="text-slate-600 dark:text-slate-300 truncate pr-2 flex-1" title={type}>{type}</span>
+                             <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-full font-bold text-[10px] min-w-[20px] text-center">{c}</span>
+                         </div>
+                     ))
+                 ) : (
+                     <div className="text-xs text-slate-300 dark:text-slate-600 italic mt-2">暂无数据</div>
+                 )}
+             </div>
+        </div>
+    );
+};
 
 const Dashboard: React.FC<Props> = ({ 
   matters, 
@@ -202,7 +226,10 @@ const Dashboard: React.FC<Props> = ({
   onOpenSettings
 }) => {
   const now = Date.now();
-  const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | 'archived' | null>(null);
+  
+  // Interaction State for Weakened Cards
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Separate Active (Not Archived) and Archived
   const activeMatters = matters.filter(m => !m.archived);
@@ -256,87 +283,53 @@ const Dashboard: React.FC<Props> = ({
   const statCompletedMatters = completedActiveMatters.length;
   const statArchivedMatters = archivedMatters.length;
 
-  // --- Modal List Logic ---
-  const getModalList = () => {
-      switch(activeStatModal) {
-          case 'progress': return inProgressMatters;
-          case 'urgent': return attentionGroups.map(g => g.matter);
-          case 'completed': return completedActiveMatters;
-          case 'archived': return archivedMatters;
-          default: return [];
-      }
-  };
-
-  const getModalTitle = () => {
-      switch(activeStatModal) {
-          case 'progress': return '正在推进';
-          case 'urgent': return '急需关注';
-          case 'completed': return '已完成（未归档）';
-          case 'archived': return '已归档';
-          default: return '';
-      }
-  };
-
-  const StatDetailModal = () => {
-      if (!activeStatModal) return null;
-      const list = getModalList();
-
+  const renderMiniList = (list: Matter[], type: 'completed' | 'archived') => {
+      if (list.length === 0) return <div className="p-4 text-center text-xs text-slate-400">列表为空</div>;
+      
       return (
-        <div className="fixed inset-0 bg-black/30 dark:bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm" onClick={() => setActiveStatModal(null)}>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">{getModalTitle()}</h2>
-                    <button onClick={() => setActiveStatModal(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <X size={24} />
-                    </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-[#f8fafc] dark:bg-slate-950">
-                    {list.length === 0 && <div className="text-slate-400 text-center py-10">暂无相关事项</div>}
-                    {list.map(m => {
-                         const allTasks = m.stages.flatMap(s => s.tasks);
-                         const completed = allTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
-                         const total = allTasks.length;
-                         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                         
-                         return (
-                             <div 
-                                key={m.id} 
-                                onClick={() => { onSelectMatter(m.id); setActiveStatModal(null); }}
-                                className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer bg-white dark:bg-slate-800"
-                             >
-                                 <div className="flex justify-between items-start mb-2">
-                                     <div>
-                                         <div className="font-bold text-slate-800 dark:text-slate-100">{m.title}</div>
-                                         <div className="text-xs text-slate-500 dark:text-slate-400">{m.type}</div>
-                                     </div>
-                                     <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{progress}%</div>
-                                 </div>
-                                 <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                                    <div className="h-1.5 rounded-full bg-slate-800 dark:bg-slate-200" style={{ width: `${progress}%` }}></div>
-                                 </div>
-                                 <div className="flex justify-end mt-2 text-xs text-slate-400">
-                                     {completed}/{total} 任务
-                                 </div>
-                             </div>
-                         )
-                    })}
-                </div>
-            </div>
-        </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl mt-2 border border-slate-100 dark:border-slate-800">
+              {list.map(m => {
+                    const allTasks = m.stages.flatMap(s => s.tasks);
+                    const completed = allTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
+                    const total = allTasks.length;
+                    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    
+                    return (
+                        <div 
+                            key={m.id} 
+                            onClick={() => onSelectMatter(m.id)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col"
+                        >
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex-1 min-w-0 pr-2">
+                                    <div className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">{m.title}</div>
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{m.type}</div>
+                                </div>
+                                <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${type === 'completed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                    {progress}%
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-slate-400 flex justify-between mt-2">
+                                <span>{completed}/{total} 任务</span>
+                                <span>{new Date(m.lastUpdated).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    )
+              })}
+         </div>
       );
-  };
+  }
 
   const getThemeIcon = () => {
     switch(theme) {
       case 'dark': return <Moon size={16} />;
       case 'light': return <Sun size={16} />;
-      default: return <Monitor size={16} />;
+      default: return <SunMoon size={16} />;
     }
   };
 
   return (
-    // Updated: Remove fixed h-[100dvh] logic in favor of min-h-screen to allow browser chrome tinting.
-    // The background color must be on this root element to blend with Safari's safe areas.
+    // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
     <div className="min-h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] relative">
       
       {/* 
@@ -380,7 +373,7 @@ const Dashboard: React.FC<Props> = ({
              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
              title="设置与备份"
           >
-             <Settings size={18} />
+             <Database size={18} />
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
@@ -405,36 +398,80 @@ const Dashboard: React.FC<Props> = ({
         {/* ADD PADDING BOTTOM FOR SAFE AREA TO PREVENT CONTENT HIDING BEHIND HOME BAR */}
         <div className="max-w-7xl mx-auto p-6 min-h-full pb-[calc(5rem+env(safe-area-inset-bottom))]">
             
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 mt-6">
-                <StatCard 
-                    label="正在进行" 
-                    value={statInProgressMatters} 
-                    icon={Activity} 
-                    color="bg-blue-500" 
-                    onClick={() => setActiveStatModal('progress')}
-                />
-                <StatCard 
-                    label="急需关注" 
-                    value={statUrgentMatters} 
-                    icon={AlertCircle} 
-                    color="bg-amber-500" 
-                    onClick={() => setActiveStatModal('urgent')}
-                />
-                <StatCard 
-                    label="已完成" 
-                    value={statCompletedMatters} 
-                    icon={CheckSquare} 
-                    color="bg-emerald-500" 
-                    onClick={() => setActiveStatModal('completed')}
-                />
-                <StatCard 
-                    label="已归档" 
-                    value={statArchivedMatters} 
-                    icon={Archive} 
-                    color="bg-slate-500" 
-                    onClick={() => setActiveStatModal('archived')}
-                />
+            {/* 
+                STATS AREA 
+            */}
+            <div className="mb-8 mt-4">
+                 {/* Row 1: Primary Stats (Expanded by Type) */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <DetailedStatCard 
+                        label="正在推进"
+                        matters={inProgressMatters}
+                        count={statInProgressMatters}
+                        icon={Activity}
+                        color="bg-blue-500"
+                     />
+                     <DetailedStatCard 
+                        label="急需关注"
+                        matters={attentionGroups.map(g => g.matter)}
+                        count={statUrgentMatters}
+                        icon={AlertCircle}
+                        color="bg-amber-500"
+                     />
+                 </div>
+
+                 {/* Row 2: Secondary Stats (Weakened / Expandable) */}
+                 <div className="flex flex-col gap-2">
+                     {/* Completed Expandable */}
+                     <div className="bg-transparent">
+                         <button 
+                            onClick={() => setShowCompleted(!showCompleted)}
+                            className={`
+                                flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm
+                                ${showCompleted 
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-sm' 
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}
+                            `}
+                         >
+                            <div className="flex items-center gap-2">
+                                <div className={`p-1 rounded-full ${showCompleted ? 'bg-emerald-200 dark:bg-emerald-800' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                                    <CheckSquare size={14} className={showCompleted ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'} />
+                                </div>
+                                <span className="font-medium">已完成事项</span>
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statCompletedMatters}</span>
+                            </div>
+                            {showCompleted ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                         </button>
+                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showCompleted ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                              {renderMiniList(completedActiveMatters, 'completed')}
+                         </div>
+                     </div>
+
+                     {/* Archived Expandable */}
+                     <div className="bg-transparent">
+                         <button 
+                            onClick={() => setShowArchived(!showArchived)}
+                            className={`
+                                flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm
+                                ${showArchived 
+                                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 shadow-sm' 
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}
+                            `}
+                         >
+                            <div className="flex items-center gap-2">
+                                <div className={`p-1 rounded-full ${showArchived ? 'bg-slate-300 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                                    <Archive size={14} className={showArchived ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} />
+                                </div>
+                                <span className="font-medium">已归档事项</span>
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statArchivedMatters}</span>
+                            </div>
+                            {showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                         </button>
+                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showArchived ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                              {renderMiniList(archivedMatters, 'archived')}
+                         </div>
+                     </div>
+                 </div>
             </div>
 
             <div className="space-y-12">
@@ -489,57 +526,9 @@ const Dashboard: React.FC<Props> = ({
                     </div>
                 )}
                 </section>
-
-                {/* Section 3: Completed */}
-                {completedActiveMatters.length > 0 && (
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">已完成</h2>
-                        <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">{completedActiveMatters.length}</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {completedActiveMatters.map(m => (
-                        <MatterCard 
-                        key={m.id} 
-                        m={m} 
-                        type="completed" 
-                        onSelectMatter={onSelectMatter}
-                        onDeleteMatter={onDeleteMatter}
-                        hasAttention={false}
-                        />
-                    ))}
-                    </div>
-                </section>
-                )}
-
-                {/* Section 4: Archived */}
-                {archivedMatters.length > 0 && (
-                    <section className="pt-8 border-t border-slate-200/50 dark:border-slate-800">
-                        <div className="flex items-center gap-2 mb-4 opacity-70 hover:opacity-100 transition-opacity">
-                            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full"></div>
-                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">归档箱</h2>
-                            <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">{archivedMatters.length}</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                            {archivedMatters.map(m => (
-                                <MatterCard 
-                                    key={m.id} 
-                                    m={m} 
-                                    type="archived" 
-                                    onSelectMatter={onSelectMatter}
-                                    onDeleteMatter={onDeleteMatter}
-                                    hasAttention={false}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                )}
             </div>
         </div>
       </div>
-
-      <StatDetailModal />
     </div>
   );
 };
