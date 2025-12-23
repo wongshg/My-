@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
 import { 
   Plus, ArrowLeft, Edit2, Archive, Sparkles, 
-  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save
+  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -18,6 +18,7 @@ interface Props {
   onSaveTemplate: (matter: Matter) => void;
   onDeleteMatter: (id: string) => void;
   isTemplateMode?: boolean;
+  logo: string | null;
 }
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
@@ -29,12 +30,16 @@ const MatterBoard: React.FC<Props> = ({
   onBack, 
   onSaveTemplate,
   onDeleteMatter,
-  isTemplateMode = false
+  isTemplateMode = false,
+  logo
 }) => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(matter.stages[0]?.id || null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
-  // Title & Description Editing (Description is stored in matter.type for templates temporarily)
+  // Mobile View State: 'STAGES' | 'TASKS' | 'DETAILS'
+  const [mobileView, setMobileView] = useState<'STAGES' | 'TASKS' | 'DETAILS'>('STAGES');
+
+  // Title & Description Editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleVal, setEditTitleVal] = useState(matter.title);
   const [editDescVal, setEditDescVal] = useState(matter.type);
@@ -59,7 +64,7 @@ const MatterBoard: React.FC<Props> = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
 
-  // Handle Deep Linking
+  // Handle Deep Linking & Mobile View Sync
   useEffect(() => {
     if (targetTaskId) {
       for (const stage of matter.stages) {
@@ -67,9 +72,15 @@ const MatterBoard: React.FC<Props> = ({
         if (found) {
           setSelectedStageId(stage.id);
           setSelectedTaskId(targetTaskId);
+          setMobileView('DETAILS');
           break;
         }
       }
+    } else {
+        // Default View State based on Desktop Logic
+        // But for mobile, if we mount and have no target, we usually want to see stages
+        // If we have selectedStageId (default), desktop shows tasks. Mobile should probably show stages unless explicit interaction.
+        // We initialize mobileView to 'STAGES'.
     }
   }, [targetTaskId, matter.id]); 
 
@@ -89,6 +100,17 @@ const MatterBoard: React.FC<Props> = ({
   // Derived state
   const activeStage = matter.stages.find(s => s.id === selectedStageId);
   const activeTask = activeStage?.tasks.find(t => t.id === selectedTaskId);
+
+  // Mobile Navigation Helpers
+  const goMobileBack = () => {
+      if (mobileView === 'DETAILS') {
+          setMobileView('TASKS');
+      } else if (mobileView === 'TASKS') {
+          setMobileView('STAGES');
+      } else {
+          onBack();
+      }
+  };
 
   const saveHeaderInfo = () => {
     if (editTitleVal.trim()) {
@@ -224,7 +246,8 @@ const MatterBoard: React.FC<Props> = ({
     });
 
     onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    setSelectedTaskId(newTask.id); // Auto select new task
+    setSelectedTaskId(newTask.id); 
+    setMobileView('DETAILS'); // On mobile, jump to details immediately
   };
 
   const deleteTask = (stageId: string, taskId: string) => {
@@ -241,6 +264,7 @@ const MatterBoard: React.FC<Props> = ({
         onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
         if (selectedTaskId === taskId) {
           setSelectedTaskId(null);
+          setMobileView('TASKS'); // Go back to list on mobile
         }
     }, 0);
   };
@@ -281,13 +305,21 @@ const MatterBoard: React.FC<Props> = ({
     onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
   };
 
+  // Helper for conditional classes
+  const getColVisibility = (view: 'STAGES' | 'TASKS' | 'DETAILS') => {
+      // Mobile: only show if match. Desktop: show based on logic (usually all visible or flexible)
+      // We use hidden/block for mobile, and override with md:flex for desktop.
+      if (mobileView === view) return 'flex';
+      return 'hidden';
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white overflow-hidden">
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-4 h-16 flex items-center justify-between shrink-0 z-20">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
-              onClick={onBack}
+              onClick={goMobileBack}
               className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"
             >
               <ArrowLeft size={18} />
@@ -295,6 +327,7 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-200"></div>
              
              {!isTemplateMode && (
+                logo ? <img src={logo} alt="Logo" className="h-8 object-contain mr-2" /> :
                 <img src="https://placehold.co/100x40?text=Logo" alt="Logo" className="h-8 opacity-80 mr-2" />
              )}
              
@@ -342,9 +375,9 @@ const MatterBoard: React.FC<Props> = ({
                     <button 
                         onClick={exportMaterials}
                         disabled={isExporting}
-                        className="flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 rounded-md transition-colors"
+                        className="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-600 px-3 py-1.5 hover:bg-slate-50 rounded-md transition-colors"
                     >
-                        <Download size={14} /> {isExporting ? '打包中...' : '下载所有材料'}
+                        <Download size={14} /> {isExporting ? '打包中...' : '下载材料'}
                     </button>
                     <div className="h-4 w-[1px] bg-slate-200 hidden md:block"></div>
                 </>
@@ -353,9 +386,9 @@ const MatterBoard: React.FC<Props> = ({
             {isTemplateMode ? (
                  <button 
                     onClick={() => onSaveTemplate(matter)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors font-bold text-sm"
+                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors font-bold text-xs md:text-sm"
                  >
-                    <Save size={16} /> 保存模板
+                    <Save size={16} /> <span className="hidden md:inline">保存模板</span>
                  </button>
             ) : (
                 <button 
@@ -375,7 +408,7 @@ const MatterBoard: React.FC<Props> = ({
                         disabled={isAnalyzing}
                         className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-all"
                     >
-                    <Sparkles size={14} /> {isAnalyzing ? '分析中...' : '智能简报'}
+                    <Sparkles size={14} /> <span className="hidden md:inline">{isAnalyzing ? '分析中...' : '智能简报'}</span>
                     </button>
                     <button 
                         onClick={() => {
@@ -383,7 +416,7 @@ const MatterBoard: React.FC<Props> = ({
                         onUpdate({...matter, archived: isArchived});
                         if(isArchived) onBack();
                         }}
-                        className={`p-1.5 rounded-md transition-colors ${matter.archived ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                         title={matter.archived ? "已归档" : "归档"}
                     >
                         <Archive size={18} />
@@ -406,11 +439,11 @@ const MatterBoard: React.FC<Props> = ({
             </div>
         )}
 
-        {/* 3-Column Layout */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* 3-Column Layout (Responsive Drill Down) */}
+        <div className="flex-1 flex overflow-hidden relative">
             
             {/* Col 1: Stages */}
-            <div className="w-64 bg-slate-50 border-r border-slate-200 flex flex-col shrink-0">
+            <div className={`w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col shrink-0 ${getColVisibility('STAGES')} md:flex`}>
                 <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段 (Stages)</span>
                     <button 
@@ -431,10 +464,14 @@ const MatterBoard: React.FC<Props> = ({
                             <div 
                                 key={stage.id}
                                 className={`
-                                    group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
+                                    group flex items-center justify-between px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
                                     ${isSelected ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-200/50'}
                                 `}
-                                onClick={() => { setSelectedStageId(stage.id); setSelectedTaskId(null); }}
+                                onClick={() => { 
+                                    setSelectedStageId(stage.id); 
+                                    setSelectedTaskId(null); 
+                                    setMobileView('TASKS'); // Switch to next view on mobile
+                                }}
                             >
                                 <div className="flex items-center gap-2 truncate flex-1 min-w-0">
                                     <span className={`flex items-center justify-center w-5 h-5 rounded text-[10px] shrink-0 ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
@@ -463,8 +500,10 @@ const MatterBoard: React.FC<Props> = ({
                                     )}
                                 </div>
                                 
+                                <ChevronRight size={16} className="text-slate-300 md:hidden" />
+
                                 {!isEditing && (
-                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 z-10 bg-white/50 rounded">
+                                    <div className="hidden md:flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 z-10 bg-white/50 rounded">
                                         <button 
                                             type="button"
                                             onMouseDown={(e) => e.stopPropagation()}
@@ -527,7 +566,7 @@ const MatterBoard: React.FC<Props> = ({
             </div>
 
             {/* Col 2: Task List */}
-            <div className="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex-col shrink-0 ${getColVisibility('TASKS')} md:flex`}>
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10">
                     <h2 className="font-bold text-slate-800 truncate max-w-[160px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
@@ -559,7 +598,10 @@ const MatterBoard: React.FC<Props> = ({
                                     <div 
                                         key={task.id}
                                         onClick={() => {
-                                            if (!isEditing) setSelectedTaskId(task.id);
+                                            if (!isEditing) {
+                                                setSelectedTaskId(task.id);
+                                                setMobileView('DETAILS');
+                                            }
                                         }}
                                         className={`
                                             group p-4 cursor-pointer transition-colors border-l-2 relative
@@ -599,7 +641,7 @@ const MatterBoard: React.FC<Props> = ({
                                         
                                         {/* Actions */}
                                         {!isEditing && (
-                                            <div className="absolute top-3 right-2 flex flex-col gap-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="hidden md:flex absolute top-3 right-2 flex-col gap-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button 
                                                     type="button"
                                                     onMouseDown={(e) => e.stopPropagation()} 
@@ -637,7 +679,7 @@ const MatterBoard: React.FC<Props> = ({
             </div>
 
             {/* Col 3: Task Details */}
-            <div className="flex-1 bg-white flex flex-col min-w-0">
+            <div className={`w-full md:flex-1 bg-white flex-col min-w-0 ${getColVisibility('DETAILS')} md:flex`}>
                 {activeTask ? (
                     <TaskDetailPane 
                         // Re-rendering controlled by passing full task object

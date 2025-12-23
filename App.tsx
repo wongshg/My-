@@ -8,6 +8,7 @@ import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save } from 'lucide-reac
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
 const TEMPLATE_KEY = 'opus_templates_v1';
+const SETTINGS_KEY = 'opus_settings_v1';
 
 const saveMatters = (matters: Matter[]) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
@@ -30,6 +31,19 @@ const loadTemplates = (): Template[] => {
   return JSON.parse(data);
 };
 
+// Logo persistence
+const saveLogo = (logo: string | null) => {
+    const settings = { logo };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+};
+const loadLogo = (): string | null => {
+    const data = localStorage.getItem(SETTINGS_KEY);
+    if(data) {
+        return JSON.parse(data).logo || null;
+    }
+    return null;
+};
+
 const uuid = () => Math.random().toString(36).substr(2, 9);
 
 const App: React.FC = () => {
@@ -37,6 +51,7 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeMatterId, setActiveMatterId] = useState<string | null>(null);
   const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
   
   // Template Editing State
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -53,7 +68,13 @@ const App: React.FC = () => {
   useEffect(() => {
     setMatters(loadMatters());
     setTemplates(loadTemplates());
+    setLogo(loadLogo());
   }, []);
+
+  const handleUpdateLogo = (newLogo: string | null) => {
+      setLogo(newLogo);
+      saveLogo(newLogo);
+  };
 
   const handleCreateMatter = (template: Template, title: string, dueDate: string) => {
     const newMatter: Matter = {
@@ -163,18 +184,14 @@ const App: React.FC = () => {
   const handleSaveTemplateChanges = (m: Matter) => {
       if (!editingTemplateId) return;
 
-      // Clean up stages (remove status, keep structure)
-      // Actually, user might want to set default description in tasks, so we keep that.
-      // But we should reset status to PENDING.
+      // Clean up stages
       const cleanStages = m.stages.map(s => ({
           ...s,
           tasks: s.tasks.map(t => ({
               ...t,
               status: TaskStatus.PENDING,
-              // We keep statusNote if user put "default note", but usually we clear it
               statusNote: '', 
               statusUpdates: [],
-              // Keep materials structure but clear readiness/files
               materials: t.materials.map(mat => ({
                   ...mat,
                   isReady: false,
@@ -426,6 +443,7 @@ const App: React.FC = () => {
           onSaveTemplate={editingTemplateId ? handleSaveTemplateChanges : initiateSaveTemplate}
           onDeleteMatter={handleDeleteMatter}
           isTemplateMode={!!editingTemplateId}
+          logo={logo}
         />
       ) : (
         <Dashboard 
@@ -435,6 +453,8 @@ const App: React.FC = () => {
           onNewMatter={() => setIsNewMatterModalOpen(true)}
           onOpenTemplateManager={() => setIsTemplateManagerOpen(true)}
           onDeleteMatter={handleDeleteMatter}
+          logo={logo}
+          onLogoChange={handleUpdateLogo}
         />
       )}
       

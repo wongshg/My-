@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
-  ArrowRight, AlertCircle, Clock, PieChart, Activity, CheckSquare, X
+  ArrowRight, AlertCircle, Clock, PieChart, Activity, CheckSquare, X, Upload
 } from 'lucide-react';
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   onNewMatter: () => void;
   onOpenTemplateManager: () => void;
   onDeleteMatter: (id: string) => void;
+  logo: string | null;
+  onLogoChange: (logo: string | null) => void;
 }
 
 interface AttentionMatterGroup {
@@ -175,7 +177,9 @@ const Dashboard: React.FC<Props> = ({
   onJumpToTask,
   onNewMatter, 
   onOpenTemplateManager,
-  onDeleteMatter 
+  onDeleteMatter,
+  logo,
+  onLogoChange
 }) => {
   const now = Date.now();
   const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | null>(null);
@@ -254,6 +258,19 @@ const Dashboard: React.FC<Props> = ({
       }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+              if (ev.target?.result) {
+                  onLogoChange(ev.target.result as string);
+              }
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
   const StatDetailModal = () => {
       if (!activeStatModal) return null;
       const list = getModalList();
@@ -307,21 +324,30 @@ const Dashboard: React.FC<Props> = ({
     <div className="max-w-7xl mx-auto p-6 min-h-screen">
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-             {/* Logo Placeholder */}
-             <img src="https://placehold.co/100x40?text=Logo" alt="Logo" className="h-10 opacity-90" />
+             <label className="relative group cursor-pointer" title="点击上传Logo">
+                 {logo ? (
+                     <img src={logo} alt="Logo" className="h-10 object-contain" />
+                 ) : (
+                     <img src="https://placehold.co/100x40?text=Logo" alt="Logo Placeholder" className="h-10 opacity-90" />
+                 )}
+                 <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                     <Upload size={14} className="text-slate-600" />
+                 </div>
+                 <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+             </label>
         </div>
         <div className="flex items-center gap-3">
           <button 
              onClick={onOpenTemplateManager}
              className="flex items-center gap-2 text-slate-600 px-4 py-2.5 rounded-lg hover:bg-slate-100 transition-colors font-medium text-sm border border-slate-200"
           >
-            <LayoutTemplate size={18} /> 模板管理
+            <LayoutTemplate size={18} /> <span className="hidden md:inline">模板管理</span>
           </button>
           <button 
               onClick={onNewMatter}
               className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 font-medium text-sm"
           >
-              <Plus size={18} /> 新建事项
+              <Plus size={18} /> <span className="hidden md:inline">新建事项</span>
           </button>
         </div>
       </header>
