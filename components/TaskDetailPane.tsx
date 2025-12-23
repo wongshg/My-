@@ -485,7 +485,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       <div className="flex-1 overflow-y-auto p-6">
         
         {/* 1. MOVED TO TOP: Combined Status Notes & Description */}
-        <div className="flex flex-col xl:flex-row gap-6 lg:gap-8 mb-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mb-8">
             
             {/* Current Situation (Primary) */}
             <div className="flex-1 min-w-0">
@@ -554,7 +554,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
             </div>
 
             {/* Description (Sidebar) */}
-            <div className="w-full xl:w-72 shrink-0">
+            <div className="w-full lg:w-72 xl:w-80 shrink-0">
                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-100 dark:border-slate-800 h-fit sticky top-0">
                     <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
                         任务指引 (标准说明)

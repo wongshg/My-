@@ -57,6 +57,7 @@ export interface Matter {
   lastUpdated: number;
   stages: Stage[];
   archived: boolean;
+  dismissedAttentionIds?: string[]; // IDs of tasks or 'OVERDUE' to ignore in attention dashboard
 }
 
 export interface Template {

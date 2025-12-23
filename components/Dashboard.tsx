@@ -3,7 +3,7 @@ import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
-  Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart
+  Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff
 } from 'lucide-react';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   onNewMatter: () => void;
   onOpenTemplateManager: () => void;
   onDeleteMatter: (id: string) => void;
+  onUpdateMatter: (m: Matter) => void; // Added for dismiss functionality
   theme: 'light' | 'dark' | 'system';
   onThemeChange: (t: 'light' | 'dark' | 'system') => void;
   notifPermission: NotificationPermission;
@@ -122,18 +123,30 @@ const AttentionGroupCard: React.FC<{
   group: AttentionMatterGroup;
   onSelectMatter: (id: string) => void;
   onJumpToTask: (matterId: string, taskId: string) => void;
-}> = ({ group, onSelectMatter, onJumpToTask }) => {
+  onDismiss: () => void;
+}> = ({ group, onSelectMatter, onJumpToTask, onDismiss }) => {
   return (
       <div 
-        className="bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-900 shadow-sm flex flex-col h-full relative overflow-hidden hover:shadow-md transition-all"
+        className="bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-900 shadow-sm flex flex-col h-full relative overflow-hidden hover:shadow-md transition-all group"
       >
+         {/* Dismiss Button - Appears on hover or visible on mobile */}
+         <div className="absolute top-2 right-2 z-20">
+             <button 
+               onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+               className="p-1.5 rounded-full bg-white/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all"
+               title="不再提示 (Ignore)"
+             >
+                 <EyeOff size={14} />
+             </button>
+         </div>
+
          <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 border-b border-amber-100 dark:border-amber-900/50 flex justify-between items-start cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors" onClick={() => onSelectMatter(group.matter.id)}>
-            <div>
+            <div className="pr-8">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-0.5">急需关注</div>
                 <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{group.matter.title}</div>
             </div>
             {group.isOverdue && (
-                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded-full shadow-sm">
+                <div className="flex items-center gap-1 text-red-500 text-xs font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded-full shadow-sm mr-6">
                     <Clock size={12} /> {group.daysLeft && group.daysLeft < 0 ? `逾期 ${Math.abs(group.daysLeft)} 天` : '即将到期'}
                 </div>
             )}
@@ -219,6 +232,7 @@ const Dashboard: React.FC<Props> = ({
   onNewMatter, 
   onOpenTemplateManager,
   onDeleteMatter,
+  onUpdateMatter,
   theme,
   onThemeChange,
   notifPermission,
@@ -246,19 +260,24 @@ const Dashboard: React.FC<Props> = ({
   const attentionGroups: AttentionMatterGroup[] = [];
 
   inProgressMatters.forEach(m => {
+    const ignored = m.dismissedAttentionIds || [];
     const tasks: { task: Task; stage: Stage; type: 'blocked' | 'exception' }[] = [];
     let isOverdue = false;
     let daysLeft = undefined;
 
+    // Check overdue, unless ignored
     if (m.dueDate) {
         daysLeft = Math.ceil((m.dueDate - now) / (1000 * 60 * 60 * 24));
-        if (daysLeft <= 7) {
+        if (daysLeft <= 7 && !ignored.includes('OVERDUE')) {
             isOverdue = true;
         }
     }
 
     m.stages.forEach(s => {
         s.tasks.forEach(t => {
+            // Check if task is already ignored
+            if (ignored.includes(t.id)) return;
+
             if (t.status === TaskStatus.BLOCKED) {
                 tasks.push({ task: t, stage: s, type: 'blocked' });
             } else if (t.status === TaskStatus.EXCEPTION) {
@@ -276,6 +295,25 @@ const Dashboard: React.FC<Props> = ({
         });
     }
   });
+
+  const handleDismissAttention = (group: AttentionMatterGroup) => {
+     if (!confirm("确定暂时忽略这些提醒吗？\n如果后续有新的卡点或异常，卡片会再次出现。")) return;
+
+     const idsToIgnore = group.tasks.map(t => t.task.id);
+     if (group.isOverdue) idsToIgnore.push('OVERDUE');
+     
+     const currentIgnored = group.matter.dismissedAttentionIds || [];
+     const newIgnored = [...currentIgnored, ...idsToIgnore];
+
+     // Use Set to unique
+     const uniqueIgnored = Array.from(new Set(newIgnored));
+     
+     onUpdateMatter({
+         ...group.matter,
+         dismissedAttentionIds: uniqueIgnored,
+         lastUpdated: Date.now()
+     });
+  };
 
   // --- Statistics Logic ---
   const statInProgressMatters = inProgressMatters.length;
@@ -494,6 +532,7 @@ const Dashboard: React.FC<Props> = ({
                                 group={group}
                                 onSelectMatter={onSelectMatter}
                                 onJumpToTask={onJumpToTask}
+                                onDismiss={() => handleDismissAttention(group)}
                             />
                         ))}
                         </div>

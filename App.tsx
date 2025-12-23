@@ -724,6 +724,7 @@ const App: React.FC = () => {
           onNewMatter={() => setIsNewMatterModalOpen(true)}
           onOpenTemplateManager={() => setIsTemplateManagerOpen(true)}
           onDeleteMatter={handleDeleteMatter}
+          onUpdateMatter={handleUpdateMatter}
           theme={theme}
           onThemeChange={setTheme}
           notifPermission={notifPermission}
