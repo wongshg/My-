@@ -18,7 +18,6 @@ interface Props {
   onSaveTemplate: (matter: Matter) => void;
   onDeleteMatter: (id: string) => void;
   isTemplateMode?: boolean;
-  logo: string | null;
 }
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
@@ -30,8 +29,7 @@ const MatterBoard: React.FC<Props> = ({
   onBack, 
   onSaveTemplate,
   onDeleteMatter,
-  isTemplateMode = false,
-  logo
+  isTemplateMode = false
 }) => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(matter.stages[0]?.id || null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -78,9 +76,6 @@ const MatterBoard: React.FC<Props> = ({
       }
     } else {
         // Default View State based on Desktop Logic
-        // But for mobile, if we mount and have no target, we usually want to see stages
-        // If we have selectedStageId (default), desktop shows tasks. Mobile should probably show stages unless explicit interaction.
-        // We initialize mobileView to 'STAGES'.
     }
   }, [targetTaskId, matter.id]); 
 
@@ -307,8 +302,6 @@ const MatterBoard: React.FC<Props> = ({
 
   // Helper for conditional classes
   const getColVisibility = (view: 'STAGES' | 'TASKS' | 'DETAILS') => {
-      // Mobile: only show if match. Desktop: show based on logic (usually all visible or flexible)
-      // We use hidden/block for mobile, and override with md:flex for desktop.
       if (mobileView === view) return 'flex';
       return 'hidden';
   };
@@ -327,8 +320,18 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-200"></div>
              
              {!isTemplateMode && (
-                logo ? <img src={logo} alt="Logo" className="h-8 object-contain mr-2" /> :
-                <img src="https://placehold.co/100x40?text=Logo" alt="Logo" className="h-8 opacity-80 mr-2" />
+                // Fix: Increased contrast for logo background
+                <div className="flex items-center justify-center h-8 w-auto px-2 rounded-lg bg-white/80 backdrop-blur-xl border border-white/50 shadow-sm mr-2">
+                    <img 
+                        src="/logo.png" 
+                        onError={(e) => {
+                            e.currentTarget.src = "https://placehold.co/100x40?text=Opus";
+                            e.currentTarget.style.opacity = '0.5';
+                        }}
+                        alt="Logo" 
+                        className="h-5 object-contain" 
+                    />
+                </div>
              )}
              
              {isEditingTitle ? (
@@ -463,9 +466,11 @@ const MatterBoard: React.FC<Props> = ({
                         return (
                             <div 
                                 key={stage.id}
+                                // Fix: Removed general 'hover' class that caused double-tap on mobile.
+                                // Used 'md:hover' for desktop and 'active' for mobile feedback.
                                 className={`
                                     group flex items-center justify-between px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
-                                    ${isSelected ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-200/50'}
+                                    ${isSelected ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-slate-600 md:hover:bg-slate-200/50 active:bg-slate-100'}
                                 `}
                                 onClick={() => { 
                                     setSelectedStageId(stage.id); 

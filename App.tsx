@@ -8,7 +8,6 @@ import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save } from 'lucide-reac
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
 const TEMPLATE_KEY = 'opus_templates_v1';
-const SETTINGS_KEY = 'opus_settings_v1';
 
 const saveMatters = (matters: Matter[]) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
@@ -31,27 +30,90 @@ const loadTemplates = (): Template[] => {
   return JSON.parse(data);
 };
 
-// Logo persistence
-const saveLogo = (logo: string | null) => {
-    const settings = { logo };
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-};
-const loadLogo = (): string | null => {
-    const data = localStorage.getItem(SETTINGS_KEY);
-    if(data) {
-        return JSON.parse(data).logo || null;
-    }
-    return null;
+const uuid = () => Math.random().toString(36).substr(2, 9);
+
+// --- Standalone Components ---
+
+// Fix: Extract Modal outside of App to prevent re-rendering/focus/event issues
+const TemplateManagerModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    templates: Template[];
+    onCreate: () => void;
+    onEdit: (t: Template) => void;
+    onDelete: (id: string) => void;
+}> = ({ isOpen, onClose, templates, onCreate, onEdit, onDelete }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh] animate-scaleIn" onClick={e => e.stopPropagation()}>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <LayoutTemplate size={20} /> 模板管理
+                    </h2>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                        <X size={24} />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">已录入模板 (全部)</h3>
+                            <button onClick={onCreate} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                <Plus size={12} /> 新建空白模板
+                            </button>
+                        </div>
+
+                        {templates.length === 0 && (
+                            <div className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-lg">
+                                暂无模板。
+                            </div>
+                        )}
+
+                        {templates.map(t => (
+                            <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white hover:border-blue-300 group transition-all">
+                                <div className="flex-1">
+                                    <div className="font-semibold text-slate-800">{t.name}</div>
+                                    <div className="text-xs text-slate-500 mt-1">{t.description}</div>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => onEdit(t)}
+                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 flex items-center gap-1 text-xs"
+                                        title="编辑详细内容"
+                                    >
+                                        <Edit2 size={14} /> 编辑
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation(); // Double safety
+                                            onDelete(t.id);
+                                        }}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50"
+                                        title="删除"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
-const uuid = () => Math.random().toString(36).substr(2, 9);
 
 const App: React.FC = () => {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeMatterId, setActiveMatterId] = useState<string | null>(null);
   const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
   
   // Template Editing State
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -68,13 +130,7 @@ const App: React.FC = () => {
   useEffect(() => {
     setMatters(loadMatters());
     setTemplates(loadTemplates());
-    setLogo(loadLogo());
   }, []);
-
-  const handleUpdateLogo = (newLogo: string | null) => {
-      setLogo(newLogo);
-      saveLogo(newLogo);
-  };
 
   const handleCreateMatter = (template: Template, title: string, dueDate: string) => {
     const newMatter: Matter = {
@@ -248,8 +304,7 @@ const App: React.FC = () => {
      setTemplates(updatedTemplates);
   };
 
-  const deleteTemplate = (templateId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteTemplate = (templateId: string) => {
     if(!confirm("确定删除此模板吗？")) return;
     const updated = templates.filter(t => t.id !== templateId);
     saveTemplates(updated);
@@ -257,67 +312,6 @@ const App: React.FC = () => {
   };
 
   // --- Views ---
-
-  const TemplateManagerModal = () => {
-    if (!isTemplateManagerOpen) return null;
-    
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh]">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-               <LayoutTemplate size={20} /> 模板管理
-             </h2>
-             <button onClick={() => setIsTemplateManagerOpen(false)} className="text-slate-400 hover:text-slate-600">
-               <X size={24} />
-             </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-             <div className="space-y-3">
-               <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">已录入模板 (全部)</h3>
-                  <button onClick={createBlankTemplate} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                    <Plus size={12} /> 新建空白模板
-                  </button>
-               </div>
-               
-               {templates.length === 0 && (
-                 <div className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-lg">
-                    暂无模板。
-                 </div>
-               )}
-
-               {templates.map(t => (
-                 <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white hover:border-blue-300 group transition-all">
-                    <div className="flex-1">
-                        <div className="font-semibold text-slate-800">{t.name}</div>
-                        <div className="text-xs text-slate-500 mt-1">{t.description}</div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                       <button 
-                           onClick={() => handleEditTemplate(t)} 
-                           className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 flex items-center gap-1 text-xs"
-                           title="编辑详细内容"
-                       >
-                           <Edit2 size={14} /> 编辑
-                       </button>
-                       <button 
-                         onClick={(e) => deleteTemplate(t.id, e)}
-                         className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-red-50"
-                         title="删除"
-                       >
-                         <Trash2 size={14} />
-                       </button>
-                    </div>
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const NewMatterView = () => {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -443,7 +437,6 @@ const App: React.FC = () => {
           onSaveTemplate={editingTemplateId ? handleSaveTemplateChanges : initiateSaveTemplate}
           onDeleteMatter={handleDeleteMatter}
           isTemplateMode={!!editingTemplateId}
-          logo={logo}
         />
       ) : (
         <Dashboard 
@@ -453,13 +446,19 @@ const App: React.FC = () => {
           onNewMatter={() => setIsNewMatterModalOpen(true)}
           onOpenTemplateManager={() => setIsTemplateManagerOpen(true)}
           onDeleteMatter={handleDeleteMatter}
-          logo={logo}
-          onLogoChange={handleUpdateLogo}
         />
       )}
       
       {isNewMatterModalOpen && <NewMatterView />}
-      {isTemplateManagerOpen && <TemplateManagerModal />}
+      
+      <TemplateManagerModal 
+         isOpen={isTemplateManagerOpen}
+         onClose={() => setIsTemplateManagerOpen(false)}
+         templates={templates}
+         onCreate={createBlankTemplate}
+         onEdit={handleEditTemplate}
+         onDelete={handleDeleteTemplate}
+      />
       
       {/* Save Template Modal Overlay */}
       {isSaveTemplateModalOpen && (

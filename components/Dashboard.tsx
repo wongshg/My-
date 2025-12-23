@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
-  ArrowRight, AlertCircle, Clock, PieChart, Activity, CheckSquare, X, Upload
+  ArrowRight, AlertCircle, Clock, PieChart, Activity, CheckSquare, X
 } from 'lucide-react';
 
 interface Props {
@@ -12,8 +12,6 @@ interface Props {
   onNewMatter: () => void;
   onOpenTemplateManager: () => void;
   onDeleteMatter: (id: string) => void;
-  logo: string | null;
-  onLogoChange: (logo: string | null) => void;
 }
 
 interface AttentionMatterGroup {
@@ -45,7 +43,13 @@ const MatterCard: React.FC<{
         ${type === 'completed' ? 'border-slate-100 opacity-70 bg-slate-50' : 'border-slate-200 hover:border-blue-300'}
       `}
     >
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      {/* 
+         Fix: Opacity logic adjusted for mobile. 
+         Mobile: opacity-100 (always visible). 
+         Desktop (md): opacity-0, hover:opacity-100.
+         Added z-20 and larger touch target.
+      */}
+      <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-20">
          <button 
             type="button"
             onMouseDown={(e) => e.stopPropagation()}
@@ -54,10 +58,10 @@ const MatterCard: React.FC<{
               e.stopPropagation(); 
               onDeleteMatter(m.id); 
             }}
-            className="p-1.5 text-slate-300 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
+            className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors bg-white/80 md:bg-transparent shadow-sm md:shadow-none border md:border-none border-slate-100"
             title="删除事项"
          >
-            <Trash2 size={16} className="pointer-events-none" />
+            <Trash2 size={16} />
          </button>
       </div>
 
@@ -177,9 +181,7 @@ const Dashboard: React.FC<Props> = ({
   onJumpToTask,
   onNewMatter, 
   onOpenTemplateManager,
-  onDeleteMatter,
-  logo,
-  onLogoChange
+  onDeleteMatter
 }) => {
   const now = Date.now();
   const [activeStatModal, setActiveStatModal] = useState<'progress' | 'urgent' | 'completed' | null>(null);
@@ -258,19 +260,6 @@ const Dashboard: React.FC<Props> = ({
       }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-              if (ev.target?.result) {
-                  onLogoChange(ev.target.result as string);
-              }
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
   const StatDetailModal = () => {
       if (!activeStatModal) return null;
       const list = getModalList();
@@ -324,17 +313,19 @@ const Dashboard: React.FC<Props> = ({
     <div className="max-w-7xl mx-auto p-6 min-h-screen">
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-             <label className="relative group cursor-pointer" title="点击上传Logo">
-                 {logo ? (
-                     <img src={logo} alt="Logo" className="h-10 object-contain" />
-                 ) : (
-                     <img src="https://placehold.co/100x40?text=Logo" alt="Logo Placeholder" className="h-10 opacity-90" />
-                 )}
-                 <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
-                     <Upload size={14} className="text-slate-600" />
-                 </div>
-                 <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
-             </label>
+             {/* Fix: Increased contrast for logo background */}
+             <div className="flex items-center justify-center h-12 w-auto px-3 rounded-xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-sm transition-all hover:bg-white/90">
+                 <img 
+                    src="/logo.png" 
+                    onError={(e) => {
+                        // Fallback if logo.png doesn't exist
+                        e.currentTarget.src = "https://placehold.co/100x40?text=Opus";
+                        e.currentTarget.style.opacity = '0.5';
+                    }}
+                    alt="Opus Logo" 
+                    className="h-8 object-contain" 
+                 />
+             </div>
         </div>
         <div className="flex items-center gap-3">
           <button 
