@@ -31,6 +31,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string; // Additional context
+  dueDate?: number; // New: Deadline for specific task
   status: TaskStatus;
   customStatus?: string; // For OTHER status
   statusNote: string; // Legacy field, kept for backward compatibility
@@ -42,6 +43,7 @@ export interface Task {
 export interface Stage {
   id: string;
   title: string;
+  dueDate?: number; // New: Deadline for specific stage
   tasks: Task[];
 }
 

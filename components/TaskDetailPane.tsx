@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, TaskStatus, Material, StatusUpdate } from '../types';
-import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar } from 'lucide-react';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
 
 interface Props {
   task: Task;
+  matterDueDate?: number; // Optional validation
   onUpdate: (updatedTask: Task) => void;
   onDelete: () => void;
 }
 
-const TaskDetailPane: React.FC<Props> = ({ task, onUpdate, onDelete }) => {
+const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDelete }) => {
   const [localTitle, setLocalTitle] = useState(task.title);
   
   // Add Material State
@@ -77,6 +78,27 @@ const TaskDetailPane: React.FC<Props> = ({ task, onUpdate, onDelete }) => {
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onUpdate({ ...task, description: e.target.value, lastUpdated: Date.now() });
   };
+
+  // --- Date Handling ---
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      if (!val) {
+          onUpdate({ ...task, dueDate: undefined, lastUpdated: Date.now() });
+          return;
+      }
+      
+      const ts = new Date(val).getTime();
+
+      // Validation
+      if (matterDueDate && ts > matterDueDate) {
+          if(!confirm("该任务的截止时间晚于整个事项的截止时间，确定要设置吗？")) {
+              return;
+          }
+      }
+
+      onUpdate({ ...task, dueDate: ts, lastUpdated: Date.now() });
+  };
+
 
   const toggleMaterial = (matId: string) => {
     const newMaterials = task.materials.map(m => 
@@ -317,7 +339,21 @@ const TaskDetailPane: React.FC<Props> = ({ task, onUpdate, onDelete }) => {
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         
-        {/* Static Description */}
+        {/* Due Date & Description */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+                    <Calendar size={14} /> 截止时间
+                </span>
+                <input 
+                    type="date"
+                    className="bg-transparent text-sm text-slate-700 focus:text-blue-600 outline-none cursor-pointer text-right"
+                    value={task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''}
+                    onChange={handleDateChange}
+                />
+            </div>
+        </div>
+
         <div>
            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
               任务指引 (标准说明)

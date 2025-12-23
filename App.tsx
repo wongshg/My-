@@ -32,6 +32,54 @@ const loadTemplates = (): Template[] => {
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
 
+// --- Notification Logic ---
+const checkDueTasks = (matters: Matter[]) => {
+    if (!('Notification' in window)) return;
+    
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    if (Notification.permission !== 'granted') return;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    let dueCount = 0;
+
+    matters.forEach(m => {
+        // Check Matter Due Date
+        if (m.dueDate) {
+             const d = new Date(m.dueDate);
+             d.setHours(0,0,0,0);
+             if (d.getTime() === today.getTime() || d.getTime() === tomorrow.getTime()) {
+                 dueCount++;
+             }
+        }
+        // Check Tasks
+        m.stages.forEach(s => {
+            s.tasks.forEach(t => {
+                if (t.dueDate && t.status !== TaskStatus.COMPLETED) {
+                    const d = new Date(t.dueDate);
+                    d.setHours(0,0,0,0);
+                     if (d.getTime() === today.getTime() || d.getTime() === tomorrow.getTime()) {
+                         dueCount++;
+                     }
+                }
+            })
+        })
+    });
+
+    if (dueCount > 0) {
+        new Notification("Orbit 工作台提醒", {
+            body: `您有 ${dueCount} 个事项或任务即将在今天或明天到期，请及时处理。`,
+            icon: '/favicon.ico' // Falls back if not present
+        });
+    }
+};
+
 // --- Standalone Components ---
 
 // Fix: Extract Modal outside of App to prevent re-rendering/focus/event issues
@@ -128,8 +176,12 @@ const App: React.FC = () => {
   const [matterToTemplate, setMatterToTemplate] = useState<Matter | null>(null);
 
   useEffect(() => {
-    setMatters(loadMatters());
+    const loadedMatters = loadMatters();
+    setMatters(loadedMatters);
     setTemplates(loadTemplates());
+    
+    // Check notifications once on load
+    checkDueTasks(loadedMatters);
   }, []);
 
   const handleCreateMatter = (template: Template, title: string, dueDate: string) => {

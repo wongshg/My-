@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
 import { 
   Plus, ArrowLeft, Edit2, Archive, Sparkles, 
-  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight
+  Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -113,8 +113,6 @@ const MatterBoard: React.FC<Props> = ({
   // --- Touch Handlers for Swipe Back ---
   const onTouchStart = (e: React.TouchEvent) => {
       setTouchEnd(null);
-      // Only record start if user is starting from the left edge (first 50px)
-      // This allows general horizontal scrolling (if any) to work elsewhere
       if (e.targetTouches[0].clientX < 50) {
           setTouchStart(e.targetTouches[0].clientX);
       } else {
@@ -204,6 +202,16 @@ const MatterBoard: React.FC<Props> = ({
       }
   };
 
+  // --- Date Validation Helper ---
+  const validateDateAgainstMatter = (newDate: string) => {
+    if (!matter.dueDate) return true;
+    const ts = new Date(newDate).getTime();
+    if (ts > matter.dueDate) {
+       return confirm("设置的日期晚于事项总截止日期，确定要设置吗？");
+    }
+    return true;
+  };
+
   // --- Stage Logic ---
 
   const confirmAddStage = () => {
@@ -251,6 +259,16 @@ const MatterBoard: React.FC<Props> = ({
     setEditingStageName('');
   };
 
+  const updateStageDate = (stageId: string, dateStr: string) => {
+      if (dateStr && !validateDateAgainstMatter(dateStr)) return;
+
+      const ts = dateStr ? new Date(dateStr).getTime() : undefined;
+      const newStages = matter.stages.map(s => 
+          s.id === stageId ? { ...s, dueDate: ts } : s
+      );
+      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+  };
+
   // --- Task Logic ---
 
   const addTask = () => {
@@ -274,7 +292,7 @@ const MatterBoard: React.FC<Props> = ({
 
     onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
     setSelectedTaskId(newTask.id); 
-    setMobileView('DETAILS'); // On mobile, jump to details immediately
+    setMobileView('DETAILS'); 
   };
 
   const deleteTask = (stageId: string, taskId: string) => {
@@ -290,7 +308,7 @@ const MatterBoard: React.FC<Props> = ({
       onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
       if (selectedTaskId === taskId) {
         setSelectedTaskId(null);
-        setMobileView('TASKS'); // Go back to list on mobile
+        setMobileView('TASKS'); 
       }
   };
 
@@ -336,9 +354,14 @@ const MatterBoard: React.FC<Props> = ({
       return 'hidden';
   };
 
+  // Format date helper
+  const formatDate = (ts?: number) => {
+      if (!ts) return '';
+      return new Date(ts).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+  };
+
   return (
     // Fixed: Use h-[100dvh] and flex-col for mobile scrolling fix.
-    // Add touch handlers for Swipe Back
     <div 
         className="h-[100dvh] w-full flex flex-col bg-white overflow-hidden"
         onTouchStart={onTouchStart}
@@ -346,8 +369,12 @@ const MatterBoard: React.FC<Props> = ({
         onTouchEnd={onTouchEnd}
     >
         
-        {/* Sticky Frosted Header - flex-none so it doesn't shrink/grow */}
-        <header className="flex-none z-50 bg-white/75 backdrop-blur-2xl border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 supports-[backdrop-filter]:bg-white/60 transition-all">
+        {/* 
+            ENHANCED STICKY FROSTED HEADER 
+            - Use bg-white/50 + backdrop-blur-3xl + saturate-180 for "Liquid Glass" effect
+            - Added explicit border-b for separation
+        */}
+        <header className="flex-none z-50 bg-white/50 backdrop-blur-3xl backdrop-saturate-150 border-b border-slate-200/50 px-4 h-16 flex items-center justify-between shrink-0 transition-all">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
               onClick={goMobileBack}
@@ -355,14 +382,15 @@ const MatterBoard: React.FC<Props> = ({
             >
               <ArrowLeft size={18} />
             </button>
-            <div className="h-5 w-[1px] bg-slate-200"></div>
+            <div className="h-5 w-[1px] bg-slate-300/50"></div>
              
              {!isTemplateMode && (
-                 // Brand: Orbit
+                 // DESIGN UPDATE: Deep Black Squircle Logo
                 <div className="flex items-center gap-2 mr-2 shrink-0 group">
-                     <div className="h-6 w-6 relative rounded-[22%] bg-gradient-to-br from-slate-700 to-black shadow-sm flex items-center justify-center overflow-hidden ring-1 ring-white/20">
-                         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent"></div>
-                         <span className="text-white font-bold text-[10px] tracking-tighter z-10">Or</span>
+                     <div className="h-7 w-7 relative rounded-[22%] bg-black shadow-lg shadow-black/20 flex items-center justify-center overflow-hidden ring-1 ring-white/10">
+                         {/* Subtle gloss */}
+                         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
+                         <span className="text-white font-bold text-[11px] tracking-tighter z-10 relative top-[1px]">Or</span>
                      </div>
                 </div>
              )}
@@ -371,7 +399,6 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col gap-1 w-full max-w-md">
                     <input 
                       autoFocus
-                      // Updated for Light Header
                       className="font-bold text-base text-slate-800 border-b border-blue-500 focus:outline-none bg-transparent placeholder-slate-400"
                       value={editTitleVal}
                       onChange={(e) => setEditTitleVal(e.target.value)}
@@ -379,16 +406,6 @@ const MatterBoard: React.FC<Props> = ({
                       onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
                       placeholder="模板名称"
                     />
-                    {isTemplateMode && (
-                        <input 
-                          className="text-xs text-slate-500 border-b border-blue-300/50 focus:outline-none bg-transparent"
-                          value={editDescVal}
-                          onChange={(e) => setEditDescVal(e.target.value)}
-                          onBlur={saveHeaderInfo}
-                          onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
-                          placeholder="模板描述/适用范围"
-                        />
-                    )}
                 </div>
               ) : (
                 <div 
@@ -399,14 +416,16 @@ const MatterBoard: React.FC<Props> = ({
                       <h1 className="font-bold text-slate-800 truncate text-base">{matter.title}</h1>
                       <Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  {isTemplateMode && (
-                      <div className="text-xs text-slate-400 truncate max-w-md">{matter.type || "点击添加描述"}</div>
+                  {/* Show Matter Due Date in Header */}
+                  {matter.dueDate && (
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <Clock size={10} /> 截止: {new Date(matter.dueDate).toLocaleDateString()}
+                      </div>
                   )}
                 </div>
               )}
           </div>
 
-          {/* Update: Button colors for Light Header */}
           <div className="flex items-center gap-2">
             {!isTemplateMode && (
                 <>
@@ -477,16 +496,16 @@ const MatterBoard: React.FC<Props> = ({
             </div>
         )}
 
-        {/* Content Area - Flex 1 to fill remaining space, internal scrolling */}
+        {/* Content Area */}
         <div className="flex-1 overflow-hidden relative flex flex-col md:flex-row w-full">
             
-            {/* Col 1: Stages - Mobile Full Screen / Desktop Sidebar */}
+            {/* Col 1: Stages */}
             <div className={`
                 flex-1 md:flex-none w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-col 
                 overflow-y-auto overscroll-y-contain
                 ${getColVisibility('STAGES')} md:flex
             `}>
-                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-0 md:static z-10">
+                <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 sticky top-0 md:static z-10 backdrop-blur-md">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">阶段</span>
                     <button 
                       onClick={() => setIsAddingStage(true)} 
@@ -506,71 +525,68 @@ const MatterBoard: React.FC<Props> = ({
                             <div 
                                 key={stage.id}
                                 className={`
-                                    group flex items-center justify-between px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
-                                    ${isSelected ? 'bg-white shadow-sm text-blue-700 font-medium' : 'text-slate-600 md:hover:bg-slate-200/50 active:bg-slate-100'}
+                                    group flex flex-col px-3 py-3 md:py-2.5 rounded-md cursor-pointer text-sm transition-colors relative
+                                    ${isSelected ? 'bg-white shadow-sm border border-slate-100' : 'border border-transparent hover:bg-slate-200/50 active:bg-slate-100'}
                                 `}
                                 onClick={() => { 
                                     setSelectedStageId(stage.id); 
                                     setSelectedTaskId(null); 
-                                    setMobileView('TASKS'); // Switch to next view on mobile
+                                    setMobileView('TASKS'); 
                                 }}
                             >
-                                <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                                    <span className={`flex items-center justify-center w-5 h-5 rounded text-[10px] shrink-0 ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
-                                        {idx + 1}
-                                    </span>
-                                    {isEditing ? (
-                                        <input 
-                                          autoFocus
-                                          value={editingStageName}
-                                          onChange={(e) => setEditingStageName(e.target.value)}
-                                          onBlur={saveStageName}
-                                          onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="w-full bg-white border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800"
-                                        />
-                                    ) : (
-                                        <span 
-                                            className="truncate" 
-                                            onDoubleClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                startEditingStage(stage);
-                                            }}
-                                            title="双击重命名"
-                                        >{stage.title}</span>
-                                    )}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                                        <span className={`flex items-center justify-center w-5 h-5 rounded text-[10px] shrink-0 ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
+                                            {idx + 1}
+                                        </span>
+                                        {isEditing ? (
+                                            <input 
+                                              autoFocus
+                                              value={editingStageName}
+                                              onChange={(e) => setEditingStageName(e.target.value)}
+                                              onBlur={saveStageName}
+                                              onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-full bg-white border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800"
+                                            />
+                                        ) : (
+                                            <span 
+                                                className={`truncate font-medium ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}
+                                                onDoubleClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    startEditingStage(stage);
+                                                }}
+                                            >{stage.title}</span>
+                                        )}
+                                    </div>
+                                    <ChevronRight size={16} className="text-slate-300 md:hidden" />
                                 </div>
                                 
-                                <ChevronRight size={16} className="text-slate-300 md:hidden" />
+                                {/* Stage Date Display/Input */}
+                                <div className="flex items-center mt-1 ml-7">
+                                    <input 
+                                        type="date"
+                                        className="bg-transparent text-[10px] text-slate-400 focus:text-slate-700 outline-none cursor-pointer"
+                                        value={stage.dueDate ? new Date(stage.dueDate).toISOString().split('T')[0] : ''}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => updateStageDate(stage.id, e.target.value)}
+                                    />
+                                </div>
 
                                 {!isEditing && (
-                                    <div className="flex items-center gap-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white/50 rounded ml-1">
+                                    <div className="absolute right-2 top-2 hidden md:group-hover:flex items-center gap-1 bg-white/80 rounded shadow-sm border border-slate-100">
                                         <button 
-                                            type="button"
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            onClick={(e) => { 
-                                                e.preventDefault();
-                                                e.stopPropagation(); 
-                                                startEditingStage(stage); 
-                                            }}
-                                            className="text-slate-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50"
-                                            title="重命名"
+                                            onClick={(e) => { e.stopPropagation(); startEditingStage(stage); }}
+                                            className="text-slate-400 hover:text-blue-600 p-1"
                                         >
-                                            <Edit2 size={14} className="pointer-events-none" />
+                                            <Edit2 size={12} />
                                         </button>
                                         <button 
-                                            type="button"
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            onClick={(e) => { 
-                                                e.preventDefault();
-                                                e.stopPropagation(); 
-                                                deleteStage(stage.id); 
-                                            }}
-                                            className="text-slate-400 hover:text-red-500 p-1.5 rounded hover:bg-red-50"
-                                            title="删除阶段"
+                                            onClick={(e) => { e.stopPropagation(); deleteStage(stage.id); }}
+                                            className="text-slate-400 hover:text-red-500 p-1"
                                         >
-                                            <Trash2 size={14} className="pointer-events-none" />
+                                            <Trash2 size={12} />
                                         </button>
                                     </div>
                                 )}
@@ -578,7 +594,6 @@ const MatterBoard: React.FC<Props> = ({
                         )
                     })}
 
-                    {/* Add Stage Input */}
                     {isAddingStage && (
                       <div className="px-2 py-1 animate-fadeIn">
                         <div className="bg-white border border-blue-300 rounded-md p-2 shadow-sm">
@@ -593,14 +608,6 @@ const MatterBoard: React.FC<Props> = ({
                               if (e.key === 'Escape') setIsAddingStage(false);
                             }}
                           />
-                          <div className="flex justify-end gap-1 mt-2">
-                            <button onClick={() => setIsAddingStage(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
-                              <X size={14} />
-                            </button>
-                            <button onClick={confirmAddStage} className="p-1 text-white bg-blue-500 hover:bg-blue-600 rounded">
-                              <Check size={14} />
-                            </button>
-                          </div>
                         </div>
                       </div>
                     )}
@@ -613,7 +620,7 @@ const MatterBoard: React.FC<Props> = ({
                 overflow-y-auto overscroll-y-contain
                 ${getColVisibility('TASKS')} md:flex
             `}>
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white z-10 sticky top-0 md:static">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between h-[60px] shrink-0 bg-white/80 backdrop-blur-md sticky top-0 md:static z-10">
                     <h2 className="font-bold text-slate-800 truncate max-w-[160px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
                     </h2>
@@ -622,7 +629,7 @@ const MatterBoard: React.FC<Props> = ({
                         onClick={addTask}
                         className="text-xs flex items-center gap-1 bg-slate-900 text-white px-2.5 py-1.5 rounded hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
                     >
-                        <Plus size={12} /> 新建任务
+                        <Plus size={12} /> 新建
                     </button>
                 </div>
                 
@@ -636,7 +643,7 @@ const MatterBoard: React.FC<Props> = ({
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-50">
-                            {activeStage.tasks.map(task => {
+                            {activeStage.tasks.map((task, taskIdx) => {
                                 const isSelected = task.id === selectedTaskId;
                                 const isEditing = editingTaskId === task.id;
 
@@ -656,34 +663,45 @@ const MatterBoard: React.FC<Props> = ({
                                     >
                                         <div className="flex justify-between items-start mb-2 pr-4">
                                             <StatusBadge status={task.status} customText={task.customStatus} />
-                                            {task.materials.some(m => !m.isReady) && !isTemplateMode && <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1"></div>}
+                                            
+                                            {/* Due Date Indicator (Small) */}
+                                            {task.dueDate && (
+                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                                                    <Calendar size={10} />
+                                                    {formatDate(task.dueDate)}
+                                                </div>
+                                            )}
                                         </div>
                                         
-                                        {isEditing ? (
-                                            <div className="pr-6">
-                                                <input
-                                                  autoFocus
-                                                  value={editingTaskName}
-                                                  onChange={(e) => setEditingTaskName(e.target.value)}
-                                                  onBlur={saveTaskName}
-                                                  onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
-                                                  onClick={(e) => e.stopPropagation()}
-                                                  className="w-full text-sm font-medium p-1 border border-blue-400 rounded outline-none"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div 
-                                                className={`text-sm pr-6 ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-700'}`}
-                                                onDoubleClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    startEditingTask(task);
-                                                }}
-                                                title="双击重命名"
-                                            >
-                                                {task.title}
-                                            </div>
-                                        )}
+                                        <div className="flex items-start gap-2">
+                                            {/* Task Number */}
+                                            <span className="text-xs font-mono text-slate-400 mt-0.5">{taskIdx + 1}.</span>
+                                            
+                                            {isEditing ? (
+                                                <div className="pr-6 flex-1">
+                                                    <input
+                                                      autoFocus
+                                                      value={editingTaskName}
+                                                      onChange={(e) => setEditingTaskName(e.target.value)}
+                                                      onBlur={saveTaskName}
+                                                      onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      className="w-full text-sm font-medium p-1 border border-blue-400 rounded outline-none"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div 
+                                                    className={`text-sm pr-6 flex-1 ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-700'}`}
+                                                    onDoubleClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        startEditingTask(task);
+                                                    }}
+                                                >
+                                                    {task.title}
+                                                </div>
+                                            )}
+                                        </div>
                                         
                                         {/* Actions */}
                                         {!isEditing && (
@@ -691,26 +709,16 @@ const MatterBoard: React.FC<Props> = ({
                                                 <button 
                                                     type="button"
                                                     onMouseDown={(e) => e.stopPropagation()} 
-                                                    onClick={(e) => { 
-                                                        e.preventDefault();
-                                                        e.stopPropagation(); 
-                                                        startEditingTask(task); 
-                                                    }}
+                                                    onClick={(e) => { e.stopPropagation(); startEditingTask(task); }}
                                                     className="p-1 rounded hover:bg-blue-100 text-slate-300 hover:text-blue-600 bg-white/50"
-                                                    title="重命名任务"
                                                 >
                                                     <Edit2 size={14} className="pointer-events-none" />
                                                 </button>
                                                 <button 
                                                     type="button"
                                                     onMouseDown={(e) => e.stopPropagation()} 
-                                                    onClick={(e) => { 
-                                                        e.preventDefault();
-                                                        e.stopPropagation(); 
-                                                        deleteTask(activeStage.id, task.id); 
-                                                    }}
+                                                    onClick={(e) => { e.stopPropagation(); deleteTask(activeStage.id, task.id); }}
                                                     className="p-1 rounded hover:bg-red-100 text-slate-300 hover:text-red-600 bg-white/50"
-                                                    title="删除任务"
                                                 >
                                                     <Trash2 size={14} className="pointer-events-none" />
                                                 </button>
@@ -732,8 +740,8 @@ const MatterBoard: React.FC<Props> = ({
             `}>
                 {activeTask ? (
                     <TaskDetailPane 
-                        // Re-rendering controlled by passing full task object
                         task={activeTask}
+                        matterDueDate={matter.dueDate} // Pass matter due date for validation
                         onUpdate={handleTaskUpdate}
                         onDelete={() => {
                             if(activeStage) deleteTask(activeStage.id, activeTask.id);
