@@ -394,9 +394,9 @@ const MatterBoard: React.FC<Props> = ({
   const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
 
   return (
-    // Fixed: Use h-[100dvh] and flex-col for mobile scrolling fix.
+    // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
     <div 
-        className="h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden"
+        className="min-h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -587,6 +587,7 @@ const MatterBoard: React.FC<Props> = ({
                 border-r border-slate-200 dark:border-slate-800 
                 flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('STAGES')} md:flex
+                pb-[env(safe-area-inset-bottom)]
             `}>
                 <div className={columnHeaderClass}>
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">阶段</span>
@@ -715,6 +716,7 @@ const MatterBoard: React.FC<Props> = ({
                 border-r border-slate-200 dark:border-slate-700 
                 flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('TASKS')} md:flex
+                pb-[env(safe-area-inset-bottom)]
             `}>
                 <div className={columnHeaderClass}>
                     <h2 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[160px]" title={activeStage?.title}>
@@ -836,6 +838,7 @@ const MatterBoard: React.FC<Props> = ({
                 flex-col min-w-0 
                 overflow-y-auto overscroll-y-contain
                 ${getColVisibility('DETAILS')} md:flex
+                pb-[env(safe-area-inset-bottom)]
             `}>
                 {activeTask ? (
                     <TaskDetailPane 

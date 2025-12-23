@@ -335,15 +335,14 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    // FIXED: Use h-[100dvh] to prevent address bar shift issues. 
-    // FIXED: overscroll-behavior-y: none in CSS (index.html) + class overscroll-y-contain here ensures inner scroll only.
-    <div className="h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] overflow-hidden relative">
+    // Updated: Remove fixed h-[100dvh] logic in favor of min-h-screen to allow browser chrome tinting.
+    // The background color must be on this root element to blend with Safari's safe areas.
+    <div className="min-h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] relative">
       
       {/* 
-          Sticky Header (Unified Visual Style)
-          ABSOLUTE POSITIONING FOR SCROLL-UNDER EFFECT
+          Sticky Header
       */}
-      <header className="absolute top-0 left-0 right-0 z-50 h-16 
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 
         bg-white/20 dark:bg-slate-900/20 
         backdrop-blur-xl backdrop-saturate-150 
         border-b border-slate-200/50 dark:border-slate-800/50 
@@ -402,8 +401,9 @@ const Dashboard: React.FC<Props> = ({
       </header>
 
       {/* Content Area - Scrolls independently */}
-      <div className="flex-1 overflow-y-auto overscroll-y-contain scroll-smooth w-full pt-20">
-        <div className="max-w-7xl mx-auto p-6 min-h-full pb-20">
+      <div className="flex-1 w-full pt-20">
+        {/* ADD PADDING BOTTOM FOR SAFE AREA TO PREVENT CONTENT HIDING BEHIND HOME BAR */}
+        <div className="max-w-7xl mx-auto p-6 min-h-full pb-[calc(5rem+env(safe-area-inset-bottom))]">
             
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 mt-6">

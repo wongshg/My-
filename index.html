@@ -38,34 +38,40 @@
     </script>
     <style>
       /* 
-        CRITICAL FIX FOR MOBILE SCROLLING:
-        1. Lock html/body height and prevent overflow.
-        2. Disable native overscroll-behavior to stop the "whole page rubber-band" effect.
+        IOS SAFARI IMMERSIVE MODE CONFIG
+        Removed 'position: fixed' to allow browser chrome to tint/blend correctly.
+        Used 'overscroll-behavior-y: none' to still prevent the rubber-band effect.
       */
-      html, body {
+      html {
         height: 100%;
         width: 100%;
-        overflow: hidden; /* Prevent body scroll */
-        position: fixed; /* Lock viewport */
-        touch-action: pan-x pan-y;
         -webkit-text-size-adjust: 100%;
-        overscroll-behavior: none;
+        /* Prevent bounce but allow UI blending */
+        overscroll-behavior-y: none; 
       }
       
       body {
+        margin: 0;
+        padding: 0;
+        /* Use min-height 100dvh to ensure full coverage without locking */
+        min-height: 100dvh;
+        width: 100%;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background-color: #f8fafc;
         transition: background-color 0.3s;
+        /* Ensure background extends into safe areas */
+        background-attachment: fixed;
       }
       
       /* Dark Mode Body */
       html.dark body {
-        background-color: #0f172a; /* slate-900 */
+        background-color: #020617; /* Matches slate-950 */
         color: #f8fafc;
       }
 
       #root {
-        height: 100%;
+        /* Ensure root fills the available space */
+        min-height: 100dvh; 
         width: 100%;
         display: flex;
         flex-direction: column;
