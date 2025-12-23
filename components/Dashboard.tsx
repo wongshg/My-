@@ -3,7 +3,7 @@ import { Matter, TaskStatus, Task, Stage } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
-  Moon, Sun, Monitor, Bell, BellOff
+  Moon, Sun, Monitor
 } from 'lucide-react';
 
 interface Props {
@@ -339,10 +339,10 @@ const Dashboard: React.FC<Props> = ({
       
       {/* 
           Sticky Header (Unified Visual Style)
-          Using bg-white/40 (highly transparent) with high blur and saturation for liquid glass.
+          ABSOLUTE POSITIONING FOR SCROLL-UNDER EFFECT
       */}
-      <header className="flex-none z-50 h-16 
-        bg-white/40 dark:bg-slate-900/40 
+      <header className="absolute top-0 left-0 right-0 z-50 h-16 
+        bg-white/30 dark:bg-slate-900/30 
         backdrop-blur-xl backdrop-saturate-150 
         border-b border-slate-200/50 dark:border-slate-800/50 
         flex items-center justify-between px-6 transition-all duration-300">
@@ -360,19 +360,7 @@ const Dashboard: React.FC<Props> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Notification Toggle */}
-          <button
-             onClick={onRequestNotif}
-             className={`p-2 rounded-lg transition-colors ${
-                 notifPermission === 'granted' 
-                 ? 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20' 
-                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-             }`}
-             title={notifPermission === 'granted' ? '通知已开启' : '开启通知'}
-          >
-             {notifPermission === 'granted' ? <Bell size={18} /> : <BellOff size={18} />}
-          </button>
-
+          
           {/* Theme Toggle */}
           <button 
              onClick={() => {
@@ -404,11 +392,11 @@ const Dashboard: React.FC<Props> = ({
       </header>
 
       {/* Content Area - Scrolls independently */}
-      <div className="flex-1 overflow-y-auto overscroll-y-contain scroll-smooth w-full">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain scroll-smooth w-full pt-16">
         <div className="max-w-7xl mx-auto p-6 min-h-full pb-20">
             
             {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 mt-6">
                 <StatCard 
                     label="正在进行" 
                     value={statInProgressMatters} 

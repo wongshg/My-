@@ -374,7 +374,7 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   // Shared Header Style for Liquid Glass Effect
-  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
+  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
 
   return (
     // Fixed: Use h-[100dvh] and flex-col for mobile scrolling fix.
@@ -435,12 +435,25 @@ const MatterBoard: React.FC<Props> = ({
                       <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
                       <Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  {/* Show Matter Due Date in Header */}
-                  {matter.dueDate && (
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Clock size={10} /> 截止: {new Date(matter.dueDate).toLocaleDateString()}
-                      </div>
-                  )}
+                  
+                  {/* EDITABLE MATTER DUE DATE */}
+                  <div className="relative group/date flex items-center gap-1 cursor-pointer w-fit">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 hover:text-blue-600 transition-colors">
+                            <Clock size={10} /> 
+                            <span>{matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</span>
+                        </div>
+                        <input 
+                            type="date"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            value={matter.dueDate ? new Date(matter.dueDate).toISOString().split('T')[0] : ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                                const ts = e.target.value ? new Date(e.target.value).getTime() : undefined;
+                                onUpdate({...matter, dueDate: ts, lastUpdated: Date.now()});
+                            }}
+                        />
+                   </div>
+
                 </div>
               )}
           </div>
