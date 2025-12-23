@@ -378,7 +378,7 @@ const Dashboard: React.FC<Props> = ({
           Sticky Header
       */}
       <header className="fixed top-0 left-0 right-0 z-50 h-16 
-        bg-white/20 dark:bg-slate-900/20 
+        bg-white/10 dark:bg-slate-900/10 
         backdrop-blur-xl backdrop-saturate-150 
         border-b border-slate-200/50 dark:border-slate-800/50 
         flex items-center justify-between px-6 transition-all duration-300">

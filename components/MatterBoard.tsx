@@ -406,7 +406,7 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   // Shared Header Style for Liquid Glass Effect
-  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
+  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/10 dark:bg-slate-900/10 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
 
   return (
     // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
@@ -422,7 +422,7 @@ const MatterBoard: React.FC<Props> = ({
             - Unified liquid glass style
         */}
         <header className="flex-none z-50 h-16 
-            bg-white/40 dark:bg-slate-900/40 
+            bg-white/10 dark:bg-slate-900/10 
             backdrop-blur-xl backdrop-saturate-150 
             border-b border-slate-200/50 dark:border-slate-800/50 
             px-4 flex items-center justify-between shrink-0 transition-all">
