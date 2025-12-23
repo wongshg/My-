@@ -437,7 +437,7 @@ const MatterBoard: React.FC<Props> = ({
                   </div>
                   
                   {/* EDITABLE MATTER DUE DATE */}
-                  <div className="relative group/date flex items-center gap-1 cursor-pointer w-fit">
+                  <div className="relative group/date flex items-center gap-1 cursor-pointer w-fit mt-0.5">
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 hover:text-blue-600 transition-colors">
                             <Clock size={10} /> 
                             <span>{matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</span>
@@ -704,7 +704,7 @@ const MatterBoard: React.FC<Props> = ({
                             <button onClick={addTask} className="text-blue-600 dark:text-blue-400 text-sm hover:underline">创建一个？</button>
                         </div>
                     ) : (
-                        <div className="divide-y divide-slate-50 dark:divide-slate-700">
+                        <div className="flex flex-col">
                             {activeStage.tasks.map((task, taskIdx) => {
                                 const isSelected = task.id === selectedTaskId;
                                 const isEditing = editingTaskId === task.id;
@@ -719,9 +719,9 @@ const MatterBoard: React.FC<Props> = ({
                                             }
                                         }}
                                         className={`
-                                            group p-4 cursor-pointer transition-colors relative
+                                            group p-4 cursor-pointer transition-colors relative border-b border-slate-50 dark:border-slate-700
                                             ${isSelected 
-                                                ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-blue-500' 
+                                                ? 'bg-blue-50/50 dark:bg-blue-900/20 !border-l-4 !border-l-blue-500' 
                                                 : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-transparent'}
                                         `}
                                     >
