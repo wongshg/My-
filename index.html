@@ -39,13 +39,13 @@
     <style>
       /* 
         IOS SAFARI IMMERSIVE MODE CONFIG
-        Force the app shell to take exactly the dynamic viewport height.
-        Disable scroll on the body itself to prevent rubber-banding of the whole page.
+        Use 100vh instead of 100dvh to force content BEHIND the bottom toolbar.
+        This enables the transparency effect.
       */
       html, body, #root {
-        height: 100dvh;
+        height: 100vh; /* Changed from 100dvh to 100vh */
         width: 100%;
-        overflow: hidden; /* Key: Scroll is handled by inner containers */
+        overflow: hidden; 
         margin: 0;
         padding: 0;
         -webkit-text-size-adjust: 100%;

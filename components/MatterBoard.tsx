@@ -453,14 +453,10 @@ const MatterBoard: React.FC<Props> = ({
   );
 
   return (
-    // Logic: 
-    // 1. Root container inherits 100dvh from body. Relative.
-    // 2. Header is absolute at top, z-50.
-    // 3. Content is absolute inset-0 (full size of root), scrolly-y auto.
-    // 4. Content has pt-16 (for header) and pb-[env(safe-area)] (for bottom bar).
-    <div className="relative w-full h-full bg-white dark:bg-slate-950">
+    // Updated: Use h-[100vh] to force content to extend to the physical screen bottom, allowing it to sit behind the translucent Safari toolbar.
+    <div className="fixed left-0 top-0 w-full h-[100vh] flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
         
-        {/* Header (Absolute Top) */}
+        {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
@@ -544,8 +540,8 @@ const MatterBoard: React.FC<Props> = ({
           </div>
         </header>
 
-        {/* Content Container - Absolute Inset 0 with Padding */}
-        <div className="absolute inset-0 pt-16 pb-[env(safe-area-inset-bottom)] overflow-hidden flex flex-col">
+        {/* Content Container - Padded for Header */}
+        <div className="flex-1 w-full overflow-hidden pt-16 flex relative">
             
             {/* 
                 DESKTOP LAYOUT (md:flex) 
@@ -722,6 +718,12 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
 
                 {/* BOTTOM HALF: Judgment Timeline (Dynamic Height) */}
+                {/* 
+                   iOS Transparency Fix:
+                   Removed background class here so standard body background/JudgmentTimeline background shows.
+                   The container allows content to flow.
+                   Content padding is handled inside JudgmentTimeline.
+                */}
                 <div 
                     className="flex flex-col z-10 relative" 
                     style={{ height: `${bottomPanelHeightPercent}%` }}
@@ -733,20 +735,16 @@ const MatterBoard: React.FC<Props> = ({
 
                 {/* TASK DETAIL OVERLAY (Full Screen) */}
                 {selectedTaskId && activeTask && (
-                    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-full overflow-hidden">
+                    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-[100vh] overflow-x-hidden touch-none">
                         {/* Custom Header for Detail View */}
-                        <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0 pt-[env(safe-area-inset-top)]">
+                        <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0">
                             <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
                                 <ArrowLeft size={20} />
                             </button>
                             <span className="ml-2 font-bold text-slate-800 dark:text-white truncate flex-1">任务详情</span>
                         </div>
-                        
-                        {/* 
-                           Content Area - Absolute Inset for Detail Overlay
-                           We need to manually handle safe areas here because it's a fixed overlay 
-                        */}
-                        <div className="flex-1 overflow-y-auto touch-auto pb-[env(safe-area-inset-bottom)]">
+                        {/* Added touch-auto to re-enable scrolling inside the container while main container is locked */}
+                        <div className="flex-1 overflow-y-auto touch-auto">
                             <TaskDetailPane 
                                 task={activeTask} 
                                 matterDueDate={matter.dueDate} 
