@@ -1,7 +1,24 @@
-import { Matter, AIAnalysisResult, JudgmentRecord } from "../types";
+import { Matter, AIAnalysisResult, AIWorkStatusResult, TaskStatus } from "../types";
 
 const SETTINGS_KEY = 'opus_settings_v1';
 const DEFAULT_API_HOST = "https://api.chatanywhere.tech";
+
+// Helper to get settings
+const getSettings = () => {
+    let apiKey = process.env.API_KEY;
+    let apiHost = DEFAULT_API_HOST;
+    try {
+        const settingsStr = localStorage.getItem(SETTINGS_KEY);
+        if (settingsStr) {
+            const settings = JSON.parse(settingsStr);
+            if (settings.apiKey) apiKey = settings.apiKey;
+            if (settings.apiHost) apiHost = settings.apiHost;
+        }
+    } catch (e) {
+        console.warn("Failed to read settings", e);
+    }
+    return { apiKey, apiHost };
+};
 
 // Helper to sanitize data: Remove tasks, stages, files. Only keep Judgment Timeline.
 const extractTimelineData = (matter: Matter) => {
@@ -21,28 +38,14 @@ export const analyzeJudgmentTimeline = async (
   allMatters: Matter[]
 ): Promise<AIAnalysisResult | null> => {
   
-  // 1. Get Configuration from LocalStorage
-  let apiKey = process.env.API_KEY;
-  let apiHost = DEFAULT_API_HOST;
-
-  try {
-      const settingsStr = localStorage.getItem(SETTINGS_KEY);
-      if (settingsStr) {
-          const settings = JSON.parse(settingsStr);
-          if (settings.apiKey) apiKey = settings.apiKey;
-          if (settings.apiHost) apiHost = settings.apiHost;
-      }
-  } catch (e) {
-      console.warn("Failed to read settings from localStorage", e);
-  }
+  const { apiKey, apiHost } = getSettings();
 
   if (!apiKey) {
-    console.error("API Key missing. Please configure in settings.");
+    alert("请在设置中配置 API Key 以使用 AI 分析功能。");
     return null;
   }
 
   // 2. Prepare Data
-  // Exclude current matter from history to avoid self-comparison
   const historyMatters = allMatters
     .filter(m => m.id !== currentMatter.id && m.judgmentTimeline && m.judgmentTimeline.length > 0)
     .map(extractTimelineData);
@@ -81,9 +84,7 @@ export const analyzeJudgmentTimeline = async (
   };
 
   try {
-    // Remove trailing slash from host if present
     const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
-
     const response = await fetch(`${cleanHost}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -91,32 +92,110 @@ export const analyzeJudgmentTimeline = async (
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // Using a standard, fast model
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: JSON.stringify(userPayload) }
         ],
-        temperature: 0.3, // Low temperature for factual consistency
-        // response_format: { type: "json_object" } // Force JSON if model supports it (gpt-3.5-turbo-1106+)
+        temperature: 0.3
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-
     if (!content) return null;
 
-    // Remove markdown code blocks if present (some models still add them despite prompt)
     const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-    
     return JSON.parse(cleanJson) as AIAnalysisResult;
 
   } catch (error) {
     console.error("AI Analysis Failed:", error);
+    alert("AI 分析失败，请检查 API Key 或网络连接。");
     return null;
   }
+};
+
+export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatusResult | null> => {
+    const { apiKey, apiHost } = getSettings();
+    if (!apiKey) {
+        alert("请先在设置中配置 API Key 以使用工作态势速览功能。");
+        return null;
+    }
+
+    // Filter Input: Only Active Matters, stripped to essentials
+    const activeMatters = matters.filter(m => !m.archived).map(m => {
+        // Find latest judgment
+        const latestJ = m.judgmentTimeline.length > 0 ? m.judgmentTimeline[0] : null;
+        
+        return {
+            id: m.id,
+            title: m.title,
+            currentStatus: m.overallStatus || TaskStatus.PENDING, // Use overall status derived from judgments
+            lastJudgmentContent: latestJ?.content || "暂无判断记录",
+            lastJudgmentTime: latestJ ? new Date(latestJ.timestamp).toISOString().split('T')[0] : "无",
+            lastUpdatedTime: new Date(m.lastUpdated).toISOString().split('T')[0]
+        };
+    });
+
+    if (activeMatters.length === 0) return null;
+
+    const systemPrompt = `
+      你是一个法务运营工作台的态势感知 AI。你的任务是根据所有进行中事项的状态和判断记录，生成一份【工作态势速览】。
+
+      ### 必须遵守的原则
+      1. **仅描述事实与态势**：归纳“现在是什么情况”，绝不提供“应该怎么做”的建议。
+      2. **不越界**：不排序优先级，不评价单个事项的好坏。
+      3. **客观语言**：禁止使用“建议、应该、需要、尽快”等祈使或建议性词汇。
+      4. **输出格式**：纯 JSON，无 Markdown 标记。
+
+      ### 输出字段要求
+      1. **overview** (string): 整体工作态势概览。用一句话描述分布（如：X个进行中，Y个受阻，Z个完成）。
+      2. **blockerTypes** (array): 主要受阻类型归纳。分析状态为 BLOCKED 或包含受阻描述的事项，归纳出 1-3 个卡点类型标签。
+         格式: [{ "tag": "外部审批等待", "count": 2 }]
+      3. **updateRhythm** (string): 判断更新节奏提示。基于 lastJudgmentTime，客观指出是否存在长时间（如超过7天）未更新判断的事项。若无则提示节奏稳定。
+      4. **workload** (string): (可选) 工作负荷感知。基于受阻数量和更新频率的直观描述（如“受阻事项较多，需关注推进难度”），保持中性。
+
+      ### 输入数据示例
+      [ { title, currentStatus, lastJudgmentContent, lastJudgmentTime } ... ]
+    `;
+
+    try {
+        const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
+        const response = await fetch(`${cleanHost}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: JSON.stringify(activeMatters) }
+                ],
+                temperature: 0.3
+            })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+
+        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result = JSON.parse(cleanJson);
+        
+        return {
+            ...result,
+            timestamp: Date.now()
+        } as AIWorkStatusResult;
+
+    } catch (error) {
+        console.error("Dashboard AI Analysis Failed:", error);
+        alert("AI 分析失败 (Error " + error + ")。请检查 API Key 配置或网络。");
+        return null;
+    }
 };

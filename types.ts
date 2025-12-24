@@ -79,7 +79,7 @@ export interface Template {
   stages: Stage[];
 }
 
-// AI Analysis Result Structure
+// AI Analysis Result Structure for Judgment Timeline
 export interface AIAnalysisResult {
   summary: string;       // 1. 当前判断摘要
   evolution: string;     // 2. 判断演变概览
@@ -89,4 +89,16 @@ export interface AIAnalysisResult {
     similarity: string;
     facts: string;
   }[];
+}
+
+// AI Work Status Overview Result Structure
+export interface AIWorkStatusResult {
+  overview: string;        // 1. 整体工作态势概览
+  blockerTypes: {          // 2. 主要受阻类型归纳
+    tag: string;
+    count: number;
+  }[];
+  updateRhythm: string;    // 3. 判断更新节奏提示
+  workload?: string;       // 4. 工作负荷感知 (Optional)
+  timestamp: number;
 }

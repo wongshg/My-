@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { Matter, TaskStatus, Task, Stage } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Matter, TaskStatus, Task, Stage, AIWorkStatusResult } from '../types';
 import { 
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
-  Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff
+  Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff,
+  BrainCircuit, RefreshCw, Sparkles
 } from 'lucide-react';
+import { analyzeWorkStatus } from '../services/aiAnalysisService';
 
 interface Props {
   matters: Matter[];
@@ -27,6 +29,8 @@ interface AttentionMatterGroup {
   isOverdue: boolean;
   daysLeft?: number;
 }
+
+const DASHBOARD_AI_KEY = 'opus_dashboard_ai_v1';
 
 // Reusable Matter Card Component
 const MatterCard: React.FC<{
@@ -252,6 +256,20 @@ const Dashboard: React.FC<Props> = ({
   // Interaction State for Weakened Cards
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  
+  // AI Module State
+  const [aiResult, setAiResult] = useState<AIWorkStatusResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAiExpanded, setIsAiExpanded] = useState(true);
+
+  useEffect(() => {
+      const saved = localStorage.getItem(DASHBOARD_AI_KEY);
+      if (saved) {
+          try {
+              setAiResult(JSON.parse(saved));
+          } catch(e) { console.error(e); }
+      }
+  }, []);
 
   // Separate Active (Not Archived) and Archived
   const activeMatters = matters.filter(m => !m.archived);
@@ -263,6 +281,21 @@ const Dashboard: React.FC<Props> = ({
   );
   
   const inProgressMatters = activeMatters.filter(m => !completedActiveMatters.some(cm => cm.id === m.id));
+
+  const handleAnalyze = async () => {
+      if (inProgressMatters.length === 0) {
+          alert("暂无进行中的事项可供分析");
+          return;
+      }
+      setIsAnalyzing(true);
+      const res = await analyzeWorkStatus(matters);
+      if (res) {
+          setAiResult(res);
+          localStorage.setItem(DASHBOARD_AI_KEY, JSON.stringify(res));
+          setIsAiExpanded(true);
+      }
+      setIsAnalyzing(false);
+  };
 
   // --- Group Attention Logic (Only for In Progress Matters) ---
   const attentionGroups: AttentionMatterGroup[] = [];
@@ -399,7 +432,7 @@ const Dashboard: React.FC<Props> = ({
         
         <div className="flex items-center gap-3">
           
-          {/* Theme Toggle */}
+          {/* Theme Toggle - Unified Style with MatterBoard (Icon Only) */}
           <button 
              onClick={() => {
                 if(theme === 'system') onThemeChange('light');
@@ -412,21 +445,24 @@ const Dashboard: React.FC<Props> = ({
              {getThemeIcon()}
           </button>
 
+          <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+
+          {/* Settings Button - Unified Style */}
           <button
              onClick={onOpenSettings}
              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
              title="设置与备份"
           >
-             <Database size={18} />
+             <Database size={16} />
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
 
           <button 
              onClick={onOpenTemplateManager}
-             className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors font-medium text-xs md:text-sm border border-transparent hover:border-slate-200/50"
+             className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors font-medium text-xs border border-transparent hover:border-slate-200/50"
           >
-            <LayoutTemplate size={18} /> <span className="hidden md:inline">模板管理</span>
+            <LayoutTemplate size={14} /> <span className="hidden md:inline">模板管理</span>
           </button>
           <button 
               onClick={onNewMatter}
@@ -445,6 +481,97 @@ const Dashboard: React.FC<Props> = ({
       <div className="absolute inset-0 overflow-y-auto pt-20 pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-7xl mx-auto p-6 min-h-full">
             
+            {/* AI Work Status Overview Module */}
+            <div className="mb-6 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-gradient-to-r from-indigo-50/50 to-white/50 dark:from-indigo-950/20 dark:to-slate-900/50 overflow-hidden shadow-sm transition-all hover:shadow-md">
+                <div className="px-4 py-3 flex items-center justify-between border-b border-indigo-100/50 dark:border-indigo-900/50">
+                    <div className="flex items-center gap-2">
+                        <BrainCircuit size={18} className="text-indigo-600 dark:text-indigo-400" />
+                        <h2 className="font-bold text-slate-800 dark:text-slate-100">AI 工作态势速览</h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {aiResult && (
+                            <span className="text-[10px] text-slate-400 hidden sm:inline">
+                                更新于: {new Date(aiResult.timestamp).toLocaleTimeString()}
+                            </span>
+                        )}
+                        <button 
+                            onClick={handleAnalyze}
+                            disabled={isAnalyzing}
+                            className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors disabled:opacity-50"
+                            title="刷新分析"
+                        >
+                            <RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} />
+                        </button>
+                        <button 
+                            onClick={() => setIsAiExpanded(!isAiExpanded)}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                        >
+                            {isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                        </button>
+                    </div>
+                </div>
+                
+                <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    {aiResult ? (
+                        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                             {/* 1. Overall & Workload */}
+                             <div className="space-y-4">
+                                 <div>
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
+                                     <p className="text-slate-700 dark:text-slate-200 leading-relaxed bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                         {aiResult.overview}
+                                     </p>
+                                 </div>
+                                 {aiResult.workload && (
+                                     <div>
+                                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4>
+                                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                                            {aiResult.workload}
+                                        </p>
+                                     </div>
+                                 )}
+                             </div>
+
+                             {/* 2. Blockers & Rhythm */}
+                             <div className="space-y-4">
+                                 <div>
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻类型</h4>
+                                     {aiResult.blockerTypes.length > 0 ? (
+                                         <div className="flex flex-col gap-2">
+                                             {aiResult.blockerTypes.map((b, i) => (
+                                                 <div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30">
+                                                     <span className="text-amber-800 dark:text-amber-200 font-medium">{b.tag}</span>
+                                                     <span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span>
+                                                 </div>
+                                             ))}
+                                         </div>
+                                     ) : (
+                                         <div className="text-slate-400 italic text-xs">暂无明显受阻归类</div>
+                                     )}
+                                 </div>
+                                 <div>
+                                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4>
+                                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
+                                        {aiResult.updateRhythm}
+                                    </p>
+                                 </div>
+                             </div>
+
+                             <div className="md:col-span-2 text-center pt-2 border-t border-indigo-50 dark:border-indigo-900/30">
+                                 <span className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">
+                                     ✨ AI 辅助分析，仅用于工作态势参考
+                                 </span>
+                             </div>
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center text-slate-400 text-sm">
+                            <div className="mb-2">点击刷新按钮生成当前工作态势分析</div>
+                            <div className="text-xs opacity-60">AI 将归纳所有事项状态，辅助您快速看清全局。</div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* 
                 STATS AREA 
             */}

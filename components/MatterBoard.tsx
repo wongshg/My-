@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
 import JudgmentTimeline from './JudgmentTimeline';
 import { 
-  Plus, ArrowLeft, Edit2, Archive, Sparkles, 
+  Plus, ArrowLeft, Edit2, Archive, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
   Moon, Sun, Monitor, FileText, Package
 } from 'lucide-react';
@@ -51,8 +51,7 @@ const MatterBoard: React.FC<Props> = ({
   const [editDescVal, setEditDescVal] = useState(matter.type);
 
   // AI State
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // Removed old AI Analysis state as requested
 
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -166,13 +165,6 @@ const MatterBoard: React.FC<Props> = ({
       setEditTitleVal(matter.title);
     }
     setIsEditingTitle(false);
-  };
-
-  const triggerAI = async () => {
-    setIsAnalyzing(true);
-    const result = await analyzeMatter(matter);
-    setAiAnalysis(result);
-    setIsAnalyzing(false);
   };
 
   const exportMaterials = async (type: 'ALL' | 'REFERENCE' | 'DELIVERABLE') => {
@@ -558,13 +550,6 @@ const MatterBoard: React.FC<Props> = ({
                 <>
                     <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
                     <button 
-                        onClick={triggerAI}
-                        disabled={isAnalyzing}
-                        className="flex items-center gap-1 text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all"
-                    >
-                    <Sparkles size={14} /> <span className="hidden md:inline">{isAnalyzing ? '分析中...' : '智能简报'}</span>
-                    </button>
-                    <button 
                         onClick={() => {
                         const isArchived = !matter.archived;
                         onUpdate({...matter, archived: isArchived});
@@ -579,19 +564,6 @@ const MatterBoard: React.FC<Props> = ({
             )}
           </div>
         </header>
-
-        {/* AI Panel */}
-        {aiAnalysis && !isTemplateMode && (
-            <div className="absolute top-16 left-0 right-0 z-40 bg-indigo-600 text-white p-4 shadow-lg animate-slideDown">
-              <div className="max-w-4xl mx-auto flex items-start gap-4">
-                <Sparkles size={20} className="mt-1 text-indigo-300 shrink-0" />
-                <div className="flex-1 text-sm whitespace-pre-wrap leading-relaxed opacity-95 font-light">
-                   {aiAnalysis}
-                </div>
-                <button onClick={() => setAiAnalysis(null)} className="text-indigo-300 hover:text-white">✕</button>
-              </div>
-            </div>
-        )}
 
         {/* Content Area - Full Height, with padding for header */}
         <div className="flex-1 flex flex-col md:flex-row w-full overflow-hidden absolute inset-0 top-0 pt-0">
