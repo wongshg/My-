@@ -57,6 +57,7 @@ export interface JudgmentRecord {
 
 // AI Analysis Result Structure for Judgment Timeline
 export interface AIAnalysisResult {
+  id?: string;           // Unique ID for history tracking
   summary: string;       // 1. 当前判断摘要
   evolution: string;     // 2. 判断演变概览
   blockerTags: string[]; // 3. 高频卡点归纳
@@ -65,7 +66,7 @@ export interface AIAnalysisResult {
     similarity: string;
     facts: string;
   }[];
-  timestamp?: number;    // Added timestamp for when analysis was generated
+  timestamp: number;    // Added timestamp for when analysis was generated
 }
 
 export interface Matter {
@@ -86,6 +87,7 @@ export interface Matter {
   
   // Persisted AI Analysis
   latestAnalysis?: AIAnalysisResult;
+  analysisHistory?: AIAnalysisResult[]; // Full history
 }
 
 export interface Template {
