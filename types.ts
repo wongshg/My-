@@ -48,6 +48,13 @@ export interface Stage {
   tasks: Task[];
 }
 
+export interface JudgmentRecord {
+  id: string;
+  content: string; // Natural language description of the judgment
+  status?: TaskStatus; // Optional status snapshot associated with this judgment
+  timestamp: number;
+}
+
 export interface Matter {
   id: string;
   title: string;
@@ -58,6 +65,11 @@ export interface Matter {
   stages: Stage[];
   archived: boolean;
   dismissedAttentionIds?: string[]; // IDs of tasks or 'OVERDUE' to ignore in attention dashboard
+  
+  // New Core Feature: Judgment Timeline
+  judgmentTimeline: JudgmentRecord[];
+  currentSituation?: string; // Derived from the latest judgment record
+  overallStatus?: TaskStatus; // Derived from the latest judgment record
 }
 
 export interface Template {
@@ -65,4 +77,16 @@ export interface Template {
   name: string;
   description: string;
   stages: Stage[];
+}
+
+// AI Analysis Result Structure
+export interface AIAnalysisResult {
+  summary: string;       // 1. 当前判断摘要
+  evolution: string;     // 2. 判断演变概览
+  blockerTags: string[]; // 3. 高频卡点归纳
+  similarCases: {        // 4. 相似事项对照
+    matterName: string;
+    similarity: string;
+    facts: string;
+  }[];
 }

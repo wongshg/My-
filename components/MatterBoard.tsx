@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Matter, Task, Stage, TaskStatus, Material } from '../types';
 import StatusBadge from './StatusBadge';
 import TaskDetailPane from './TaskDetailPane';
+import JudgmentTimeline from './JudgmentTimeline';
 import { 
   Plus, ArrowLeft, Edit2, Archive, Sparkles, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
@@ -13,6 +14,7 @@ import { getFile } from '../services/storage';
 
 interface Props {
   matter: Matter;
+  allMatters: Matter[]; // New prop for historical comparison
   targetTaskId?: string | null;
   onUpdate: (updatedMatter: Matter) => void;
   onBack: () => void;
@@ -27,6 +29,7 @@ const uuid = () => Math.random().toString(36).substr(2, 9);
 
 const MatterBoard: React.FC<Props> = ({ 
   matter, 
+  allMatters,
   targetTaskId,
   onUpdate, 
   onBack, 
@@ -845,7 +848,7 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
             </div>
 
-            {/* Col 3: Task Details */}
+            {/* Col 3: Details (Task Details OR Judgment Timeline) */}
             <div className={`
                 flex-1 w-full bg-white dark:bg-slate-900 
                 flex-col min-w-0 
@@ -853,6 +856,11 @@ const MatterBoard: React.FC<Props> = ({
                 ${getColVisibility('DETAILS')} md:flex
                 pt-16 pb-[env(safe-area-inset-bottom)]
             `}>
+                {/* 
+                   NEW LOGIC:
+                   If activeTask is selected, show TaskDetailPane.
+                   If NO task is selected, show the JudgmentTimeline (Matter Overview).
+                */}
                 {activeTask ? (
                     <TaskDetailPane 
                         task={activeTask}
@@ -864,10 +872,11 @@ const MatterBoard: React.FC<Props> = ({
                         isTemplateMode={isTemplateMode}
                     />
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 bg-slate-50/30 dark:bg-slate-800/20">
-                        <Briefcase size={48} className="mb-4 opacity-20" />
-                        <p className="text-sm">选择一个任务开始处理</p>
-                    </div>
+                    <JudgmentTimeline 
+                        matter={matter}
+                        allMatters={allMatters}
+                        onUpdate={onUpdate}
+                    />
                 )}
             </div>
 

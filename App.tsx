@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Matter, Template, TaskStatus, Task, Stage } from './types';
+import { Matter, Template, TaskStatus, Task, Stage, JudgmentRecord } from './types';
 import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
@@ -33,7 +33,9 @@ const loadMatters = (): Matter[] => {
       lastUpdated: Date.now(),
       archived: false,
       stages: JSON.parse(JSON.stringify(SPV_DEREGISTRATION_TEMPLATE.stages)),
-      dismissedAttentionIds: []
+      dismissedAttentionIds: [],
+      judgmentTimeline: [],
+      overallStatus: TaskStatus.IN_PROGRESS
   };
 
   // Populate Demo Data Status
@@ -75,6 +77,24 @@ const loadMatters = (): Matter[] => {
           }];
       }
   }
+  
+  // ADD DEMO JUDGMENT
+  demoMatter.judgmentTimeline = [
+      {
+          id: uuid(),
+          content: "当前主要卡点在于香港航通的董事会决议签署进度。虽然已邮件催促，但考虑到跨境沟通时效，预计仍需3天左右。同步正在推进内部印章申请，确保决议一下来就能立即提交公示，目前整体可控。",
+          status: TaskStatus.BLOCKED,
+          timestamp: Date.now() - 1000 * 60 * 60 * 2
+      },
+      {
+          id: uuid(),
+          content: "已完成前期注销方案的内部审批，所有前置条件均已满足。准备启动简易注销流程。",
+          status: TaskStatus.IN_PROGRESS,
+          timestamp: Date.now() - 1000 * 60 * 60 * 48
+      }
+  ];
+  demoMatter.currentSituation = demoMatter.judgmentTimeline[0].content;
+  demoMatter.overallStatus = TaskStatus.BLOCKED;
 
   saveMatters([demoMatter]);
   return [demoMatter];
@@ -305,7 +325,8 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       lastUpdated: Date.now(),
       stages: JSON.parse(JSON.stringify(template.stages)), // Deep copy
-      archived: false
+      archived: false,
+      judgmentTimeline: []
     };
     const updated = [newMatter, ...matters];
     setMatters(updated);
@@ -518,7 +539,8 @@ const App: React.FC = () => {
           stages: JSON.parse(JSON.stringify(t.stages)),
           createdAt: Date.now(),
           lastUpdated: Date.now(),
-          archived: false
+          archived: false,
+          judgmentTimeline: []
       };
 
       // Add to matters list temporarily so Board can render it
@@ -765,6 +787,7 @@ const App: React.FC = () => {
       {activeMatterId && activeMatter ? (
         <MatterBoard 
           matter={activeMatter} 
+          allMatters={matters}
           targetTaskId={targetTaskId}
           onUpdate={handleUpdateMatter}
           onBack={editingTemplateId ? cancelTemplateEdit : () => { setActiveMatterId(null); setTargetTaskId(null); }}
