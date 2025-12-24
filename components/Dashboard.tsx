@@ -404,13 +404,15 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    // Updated: Use h-[100dvh] and overflow-hidden to contain scroll within this div
-    // This allows content to scroll BEHIND the transparent absolute header.
-    <div className="h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] relative overflow-hidden">
+    // Updated Logic:
+    // 1. Root container inherits 100dvh from body. Relative.
+    // 2. Header is absolute at top, z-50.
+    // 3. Content is absolute inset-0 (full size of root), scrolly-y auto.
+    // 4. Content has pt-16 (for header) and pb-[env(safe-area)] (for bottom bar).
+    <div className="relative w-full h-full bg-[#f8fafc] dark:bg-[#020617]">
       
       {/* 
-          Header - Changed from fixed to absolute to sit inside the relative container
-          It floats on top of the scrolling content.
+          Header - Absolute
       */}
       <header className="absolute top-0 left-0 right-0 z-50 h-16 
         bg-white/10 dark:bg-slate-900/10 
@@ -431,8 +433,6 @@ const Dashboard: React.FC<Props> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          
-          {/* Theme Toggle - Unified Style with MatterBoard (Icon Only) */}
           <button 
              onClick={() => {
                 if(theme === 'system') onThemeChange('light');
@@ -444,10 +444,6 @@ const Dashboard: React.FC<Props> = ({
           >
              {getThemeIcon()}
           </button>
-
-          {/* Divider removed as requested */}
-
-          {/* Settings Button - Unified Style */}
           <button
              onClick={onOpenSettings}
              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
@@ -455,9 +451,7 @@ const Dashboard: React.FC<Props> = ({
           >
              <Settings size={16} />
           </button>
-
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-
           <button 
              onClick={onOpenTemplateManager}
              className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors font-medium text-xs border border-transparent hover:border-slate-200/50"
@@ -473,8 +467,8 @@ const Dashboard: React.FC<Props> = ({
         </div>
       </header>
       
-      {/* ... Content ... */}
-      <div className="absolute inset-0 overflow-y-auto pt-20 pb-[env(safe-area-inset-bottom)]">
+      {/* Content Container - Absolute Inset 0 with Padding */}
+      <div className="absolute inset-0 pt-16 pb-[env(safe-area-inset-bottom)] overflow-y-auto">
         <div className="max-w-7xl mx-auto p-6 min-h-full">
             
             {/* AI Work Status Overview Module */}
