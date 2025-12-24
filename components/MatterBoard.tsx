@@ -42,6 +42,11 @@ const MatterBoard: React.FC<Props> = ({
   const [selectedStageId, setSelectedStageId] = useState<string | null>(matter.stages[0]?.id || null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
+  // Mobile Split State (Top Panel Height in vh)
+  const [topPanelHeightVh, setTopPanelHeightVh] = useState(40); // Default 40vh for top panel
+  const resizeRef = useRef<HTMLDivElement>(null);
+  const [isResizing, setIsResizing] = useState(false);
+
   // Title & Description Editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleVal, setEditTitleVal] = useState(matter.title);
@@ -88,6 +93,59 @@ const MatterBoard: React.FC<Props> = ({
       newStageInputRef.current.focus();
     }
   }, [isAddingStage]);
+
+  // Resize Logic for Mobile (Touch)
+  const handleResizeStart = (e: React.TouchEvent | React.MouseEvent) => {
+      setIsResizing(true);
+      document.body.style.userSelect = 'none';
+  };
+
+  const handleResizeMove = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!isResizing) return;
+      
+      let clientY;
+      if ('touches' in e) {
+          clientY = e.touches[0].clientY;
+      } else {
+          clientY = e.clientY;
+      }
+
+      // Header is usually 64px (4rem). We calculate height relative to viewport.
+      const headerOffset = 64; 
+      const rawHeight = clientY - headerOffset;
+      const vh = (rawHeight / window.innerHeight) * 100;
+
+      // Clamp between 20vh and 70vh
+      if (vh > 20 && vh < 70) {
+          setTopPanelHeightVh(vh);
+      }
+  };
+
+  const handleResizeEnd = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = '';
+  };
+
+  useEffect(() => {
+      if (isResizing) {
+          window.addEventListener('mousemove', handleResizeMove as any);
+          window.addEventListener('mouseup', handleResizeEnd);
+          window.addEventListener('touchmove', handleResizeMove as any);
+          window.addEventListener('touchend', handleResizeEnd);
+      } else {
+          window.removeEventListener('mousemove', handleResizeMove as any);
+          window.removeEventListener('mouseup', handleResizeEnd);
+          window.removeEventListener('touchmove', handleResizeMove as any);
+          window.removeEventListener('touchend', handleResizeEnd);
+      }
+      return () => {
+          window.removeEventListener('mousemove', handleResizeMove as any);
+          window.removeEventListener('mouseup', handleResizeEnd);
+          window.removeEventListener('touchmove', handleResizeMove as any);
+          window.removeEventListener('touchend', handleResizeEnd);
+      }
+  }, [isResizing]);
+
 
   const activeStage = matter.stages.find(s => s.id === selectedStageId);
   const activeTask = activeStage?.tasks.find(t => t.id === selectedTaskId);
@@ -158,15 +216,6 @@ const MatterBoard: React.FC<Props> = ({
       } finally {
           setIsExporting(false);
       }
-  };
-
-  const validateDateAgainstMatter = (newDate: string) => {
-    if (!matter.dueDate) return true;
-    const ts = new Date(newDate).getTime();
-    if (ts > matter.dueDate) {
-       return confirm("设置的日期晚于事项总截止日期，确定要设置吗？");
-    }
-    return true;
   };
 
   // --- CRUD Operations ---
@@ -294,7 +343,7 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const renderMobileStageSelector = () => (
-      <div className="sticky top-16 z-30 flex overflow-x-auto gap-2 p-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 scrollbar-hide md:hidden shrink-0 shadow-sm">
+      <div className="flex overflow-x-auto gap-2 p-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 scrollbar-hide shrink-0 shadow-sm">
           {matter.stages.map((stage, idx) => {
               const isSelected = selectedStageId === stage.id;
               const isEditing = editingStageId === stage.id;
@@ -363,11 +412,14 @@ const MatterBoard: React.FC<Props> = ({
   );
 
   return (
-    // Root container: Mobile uses min-h-screen for natural scrolling. Desktop forces fixed h-screen.
-    <div className={`w-full flex flex-col bg-white dark:bg-slate-950 md:h-screen md:overflow-hidden ${window.innerWidth < 768 ? 'min-h-screen' : ''}`}>
-        
-        {/* Header - Sticky on Mobile, Absolute/Fixed on Desktop */}
-        <header className="sticky top-0 z-40 md:absolute md:left-0 md:right-0 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
+    <>
+    {/* 
+        DESKTOP LAYOUT (Hidden on mobile)
+        Fixed height, no body scroll.
+    */}
+    <div className="hidden md:flex w-full h-screen flex-col bg-white dark:bg-slate-950 overflow-hidden">
+        {/* Desktop Header */}
+        <header className="h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
               <ArrowLeft size={18} />
@@ -446,8 +498,8 @@ const MatterBoard: React.FC<Props> = ({
           </div>
         </header>
 
-        {/* Desktop Container (Hidden on Mobile) */}
-        <div className="hidden md:flex flex-1 w-full overflow-hidden pt-16 relative">
+        {/* Desktop Body */}
+        <div className="flex-1 w-full overflow-hidden flex relative">
             {/* Col 1: Stages */}
                 <div className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-y-auto">
                     <div className="p-4 font-bold text-xs text-slate-400 uppercase tracking-wider flex justify-between">
@@ -561,16 +613,74 @@ const MatterBoard: React.FC<Props> = ({
                     )}
                 </div>
         </div>
+    </div>
 
-        {/* 
-            MOBILE LAYOUT (md:hidden)
-            Redesigned as a vertical scrolling flow to enable browser chrome collapsing and transparency.
-        */}
-        <div className="md:hidden flex flex-col flex-1 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    {/* 
+        MOBILE LAYOUT (Hidden on desktop)
+        Sticky Split Layout: 
+        - Header and Top Panel are 'sticky', meaning they stay fixed as you scroll down.
+        - The Resize Handle is also 'sticky'.
+        - The Bottom Panel (Timeline) is in the natural flow.
+        - Result: Scrolling moves the document, shrinking the browser address bar, but visual top elements persist.
+    */}
+    <div className="md:hidden w-full min-h-screen flex flex-col bg-white dark:bg-slate-950">
+        
+        {/* Sticky Header (h-16 = 4rem) */}
+        <header className="sticky top-0 z-50 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
+            <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
+              <ArrowLeft size={18} />
+            </button>
+            <div className="h-5 w-[1px] bg-slate-300/50 dark:bg-slate-700"></div>
+             
+             {!isTemplateMode && (
+                <div className="flex items-center gap-2 mr-2 shrink-0 group">
+                     <div className="h-7 w-7 relative rounded-[22%] bg-black flex items-center justify-center overflow-hidden ring-1 ring-white/10">
+                         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
+                         <span className="text-white font-bold text-[11px] tracking-tighter z-10 relative top-[1px]">Or</span>
+                     </div>
+                </div>
+             )}
+             
+             {isEditingTitle ? (
+                <input 
+                  autoFocus
+                  className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
+                  value={editTitleVal}
+                  onChange={(e) => setEditTitleVal(e.target.value)}
+                  onBlur={saveHeaderInfo}
+                  onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
+                />
+              ) : (
+                <div className="flex flex-col overflow-hidden" onClick={() => setIsEditingTitle(true)}>
+                  <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}
+                  </div>
+                </div>
+              )}
+          </div>
+
+          <div className="flex items-center gap-2">
+             <button onClick={() => onThemeChange && onThemeChange(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
+                {getThemeIcon()}
+            </button>
+            <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                另存模板
+            </button>
+          </div>
+        </header>
+
+        {/* Sticky Top Panel (Stages + Tasks) */}
+        {/* top-16 ensures it sticks right below the header */}
+        <div 
+            className="sticky top-16 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur shadow-sm overflow-y-auto flex flex-col"
+            style={{ height: `${topPanelHeightVh}vh` }}
+        >
                 {renderMobileStageSelector()}
                 
                 {/* Task List Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         {activeStage ? `${activeStage.tasks.length} 个任务` : '请选择阶段'}
                     </span>
@@ -580,7 +690,7 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
 
                 {/* Task List Content */}
-                <div className="p-2 space-y-2 bg-slate-50/30 dark:bg-slate-900 min-h-[100px]">
+                <div className="p-2 space-y-2 bg-slate-50/30 dark:bg-slate-900 flex-1">
                     {activeStage?.tasks.length === 0 && <div className="text-center py-8 text-slate-400 text-xs">暂无任务</div>}
                     {activeStage?.tasks.map((task) => (
                         <div 
@@ -599,40 +709,49 @@ const MatterBoard: React.FC<Props> = ({
                         </div>
                     ))}
                 </div>
-
-                {/* Divider/Section Header for Timeline */}
-                <div className="mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800/50 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                    <MoreHorizontal size={14}/> 整体判断与进展
-                </div>
-
-                {/* Timeline - Rendered directly in flow */}
-                <div className="flex-1 min-h-[300px]">
-                    <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
-                </div>
-
-                {/* TASK DETAIL OVERLAY (Full Screen) */}
-                {selectedTaskId && activeTask && (
-                    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-[100vh] overflow-hidden">
-                        {/* Custom Header for Detail View */}
-                        <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0 pt-[env(safe-area-inset-top)]">
-                            <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
-                                <ArrowLeft size={20} />
-                            </button>
-                            <span className="ml-2 font-bold text-slate-800 dark:text-white truncate flex-1">任务详情</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto touch-auto pb-[env(safe-area-inset-bottom)]">
-                            <TaskDetailPane 
-                                task={activeTask} 
-                                matterDueDate={matter.dueDate} 
-                                onUpdate={handleTaskUpdate} 
-                                onDelete={() => deleteTask(activeStage!.id, activeTask.id)} 
-                                isTemplateMode={isTemplateMode} 
-                            />
-                        </div>
-                    </div>
-                )}
         </div>
+
+        {/* Sticky Resize Handle */}
+        {/* top calculation: 4rem (header) + heightVh */}
+        <div 
+            ref={resizeRef}
+            className="sticky z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shrink-0 shadow-sm"
+            style={{ top: `calc(4rem + ${topPanelHeightVh}vh)` }}
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+        >
+            <GripHorizontal size={16} className="text-slate-400" />
+        </div>
+
+        {/* Bottom Panel (Timeline) */}
+        {/* Natural Flow - allows body scroll */}
+        <div className="flex-1 min-h-[100vh] pb-[calc(2rem+env(safe-area-inset-bottom))] bg-transparent relative z-0">
+             <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
+        </div>
+
+        {/* TASK DETAIL OVERLAY (Full Screen) */}
+        {selectedTaskId && activeTask && (
+            <div className="fixed inset-0 z-[60] bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-[100vh] overflow-hidden">
+                {/* Custom Header for Detail View */}
+                <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0 pt-[env(safe-area-inset-top)]">
+                    <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <span className="ml-2 font-bold text-slate-800 dark:text-white truncate flex-1">任务详情</span>
+                </div>
+                <div className="flex-1 overflow-y-auto touch-auto pb-[env(safe-area-inset-bottom)]">
+                    <TaskDetailPane 
+                        task={activeTask} 
+                        matterDueDate={matter.dueDate} 
+                        onUpdate={handleTaskUpdate} 
+                         onDelete={() => deleteTask(activeStage!.id, activeTask.id)} 
+                        isTemplateMode={isTemplateMode} 
+                    />
+                </div>
+            </div>
+        )}
     </div>
+    </>
   );
 };
 
