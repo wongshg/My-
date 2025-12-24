@@ -170,8 +170,10 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
           This ensures vertical scrolling works smoothly across all elements.
           pb-[calc(1rem+env(safe-area-inset-bottom))] ensures content is not hidden behind home indicator,
           while the background (bg-slate-50/50) extends fully.
+          
+          UPDATE: Added extra padding (pb-24) to ensure content can be scrolled above the iOS bottom toolbar when using 100vh
       */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6 pb-24 md:pb-[calc(1rem+env(safe-area-inset-bottom))]">
          
          {/* A. AI Panel (If exists) */}
          {(matter.latestAnalysis || isAnalyzing) && (

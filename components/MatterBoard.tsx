@@ -453,8 +453,8 @@ const MatterBoard: React.FC<Props> = ({
   );
 
   return (
-    // Updated: Use fixed with h-[100dvh] instead of inset-0 to force full viewport coverage including area behind Safari address bar
-    <div className="fixed left-0 top-0 w-full h-[100dvh] flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+    // Updated: Use h-[100vh] to force content to extend to the physical screen bottom, allowing it to sit behind the translucent Safari toolbar.
+    <div className="fixed left-0 top-0 w-full h-[100vh] flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
         
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
@@ -735,7 +735,7 @@ const MatterBoard: React.FC<Props> = ({
 
                 {/* TASK DETAIL OVERLAY (Full Screen) */}
                 {selectedTaskId && activeTask && (
-                    <div className="absolute inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full max-w-[100vw] overflow-x-hidden touch-none">
+                    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-[100vh] overflow-x-hidden touch-none">
                         {/* Custom Header for Detail View */}
                         <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0">
                             <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">

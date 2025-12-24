@@ -510,8 +510,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       </div>
 
       {/* Content Area - Scroll flows under sticky header */}
-      {/* Updated: Use calc padding to respect safe area at bottom for "transparent" effect */}
-      <div className="p-4 space-y-6 pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      {/* Updated: Use calc padding to respect safe area at bottom for "transparent" effect. 
+          PB-24 is added as a safe margin for the iOS toolbar when using 100vh.
+      */}
+      <div className="p-4 space-y-6 pb-24 md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
         
         {/* Description */}
         <div className="w-full group">
