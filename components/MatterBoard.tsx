@@ -496,6 +496,29 @@ const MatterBoard: React.FC<Props> = ({
              <button onClick={() => onThemeChange && onThemeChange(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
                 {getThemeIcon()}
             </button>
+
+             {!isTemplateMode && (
+                <div className="hidden md:block relative">
+                    <button 
+                        onClick={() => setShowExportMenu(!showExportMenu)} 
+                        className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-md"
+                    >
+                        <Download size={14} /> 下载
+                    </button>
+                    {showExportMenu && (
+                        <div className="absolute right-0 top-10 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 z-50 flex flex-col py-1 animate-fadeIn">
+                             <button onClick={() => exportMaterials('ALL')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">全部下载</button>
+                             <div className="h-[1px] bg-slate-100 dark:bg-slate-700 mx-2"></div>
+                             <button onClick={() => exportMaterials('REFERENCE')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅参考模板</button>
+                             <button onClick={() => exportMaterials('DELIVERABLE')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅交付产物</button>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                另存模板
+            </button>
             
             {!isTemplateMode && (
                 <>
@@ -514,21 +537,6 @@ const MatterBoard: React.FC<Props> = ({
                 </>
             )}
 
-            {!isTemplateMode && (
-                <div className="hidden md:block">
-                    <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-md">
-                        <Download size={14} /> 下载
-                    </button>
-                    {showExportMenu && (
-                        <div className="absolute right-4 top-14 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 z-50">
-                             <button onClick={() => exportMaterials('ALL')} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700">全部下载</button>
-                        </div>
-                    )}
-                </div>
-            )}
-            <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
-                另存模板
-            </button>
           </div>
         </header>
 
@@ -711,9 +719,10 @@ const MatterBoard: React.FC<Props> = ({
 
                 {/* BOTTOM HALF: Judgment Timeline (Dynamic Height) */}
                 {/* 
-                    Updated for transparency: Removed solid bg from this container.
-                    It relies on JudgmentTimeline's bg, allowing it to feel less 'boxed' if desired, 
-                    or simply ensuring layout flow. 
+                   iOS Transparency Fix:
+                   Removed background class here so standard body background/JudgmentTimeline background shows.
+                   The container allows content to flow.
+                   Content padding is handled inside JudgmentTimeline.
                 */}
                 <div 
                     className="flex flex-col z-10 relative" 
@@ -726,7 +735,7 @@ const MatterBoard: React.FC<Props> = ({
 
                 {/* TASK DETAIL OVERLAY (Full Screen) */}
                 {selectedTaskId && activeTask && (
-                    <div className="absolute inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full max-w-[100vw] overflow-x-hidden">
+                    <div className="absolute inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full max-w-[100vw] overflow-x-hidden touch-none">
                         {/* Custom Header for Detail View */}
                         <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0">
                             <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
@@ -734,7 +743,8 @@ const MatterBoard: React.FC<Props> = ({
                             </button>
                             <span className="ml-2 font-bold text-slate-800 dark:text-white truncate flex-1">任务详情</span>
                         </div>
-                        <div className="flex-1 overflow-y-auto">
+                        {/* Added touch-auto to re-enable scrolling inside the container while main container is locked */}
+                        <div className="flex-1 overflow-y-auto touch-auto">
                             <TaskDetailPane 
                                 task={activeTask} 
                                 matterDueDate={matter.dueDate} 
