@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, TaskStatus, Material, StatusUpdate } from '../types';
-import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package, BookOpen } from 'lucide-react';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
 
 interface Props {
@@ -281,9 +281,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       const isRef = type === 'REFERENCE';
       
       if (list.length === 0) {
-          // If in template mode and adding material to this section, don't show "None"
           if (isAddingMaterial && addingCategory === type) return null;
-          // If empty and not adding, show empty state
           return <div className="text-sm text-slate-300 italic py-1">暂无{isRef ? '参考文件' : '交付产物'}</div>;
       }
 
@@ -314,15 +312,22 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                      </div>
                   )}
 
-                  <button 
-                    onClick={() => toggleMaterial(m.id)}
-                    className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
-                  >
-                    {m.isReady ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                  </button>
+                  {/* Icon Button */}
+                  {isRef ? (
+                      <div className="shrink-0 p-0.5 text-blue-500 dark:text-blue-400 opacity-80">
+                          <BookOpen size={20} />
+                      </div>
+                  ) : (
+                      <button 
+                        onClick={() => toggleMaterial(m.id)}
+                        className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
+                      >
+                        {m.isReady ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                      </button>
+                  )}
                   
                   <div className="flex-1 min-w-0">
-                      <div className={`text-sm ${m.isReady ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                      <div className={`text-sm ${m.isReady && !isRef ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
                         {m.name}
                       </div>
                       
@@ -403,27 +408,33 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   );
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-900 animate-fadeIn">
-      {/* Header Area */}
-      <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col shrink-0 gap-4">
+    // Changed: Remove overflow-y-auto from root to let parent (MatterBoard) handle scroll if desired, 
+    // BUT we need 'sticky' to work. For sticky to work, this component must be part of the flow.
+    // MatterBoard container has overflow-y-auto. 
+    // We remove the internal 'flex flex-col h-full' pattern and just use flow layout.
+    <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full">
+      
+      {/* Header Area - Sticky */}
+      {/* Reduced padding p-6 -> p-4. Reduced gap-4 -> gap-3. */}
+      <div className="sticky top-0 z-20 p-4 border-b border-slate-100/50 dark:border-slate-800/50 flex flex-col shrink-0 gap-3 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl transition-all">
         
         {/* Row 1: Title & Actions */}
         <div className="flex justify-between items-start">
             <input 
-                className="flex-1 w-full text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent mr-4"
+                className="flex-1 w-full text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent mr-2 md:mr-4"
                 value={localTitle}
                 onChange={(e) => setLocalTitle(e.target.value)}
                 onBlur={handleTitleBlur}
                 placeholder="任务标题..."
             />
             
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                 {/* Due Date Picker (Compact) */}
-                <div className="relative flex items-center justify-center p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                <div className="relative flex items-center justify-center p-1.5 md:p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                     <div className="flex items-center gap-1.5 cursor-pointer">
                         <Calendar size={18} className={`${task.dueDate ? 'text-blue-500' : 'text-slate-300 hover:text-slate-500'}`} />
                         {task.dueDate && (
-                            <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                            <span className="text-xs font-mono text-slate-600 dark:text-slate-400 hidden md:inline">
                                 {new Date(task.dueDate).toLocaleDateString(undefined, {month:'numeric', day:'numeric'})}
                             </span>
                         )}
@@ -439,7 +450,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
                 <button 
                     onClick={() => { if(confirm('确定删除此任务吗？')) onDelete(); }}
-                    className="text-slate-300 hover:text-red-500 transition-colors p-2"
+                    className="text-slate-300 hover:text-red-500 transition-colors p-1.5 md:p-2"
                     title="删除任务"
                 >
                     <Trash2 size={18} />
@@ -502,8 +513,8 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-6">
+      {/* Content Area - Scroll flows under sticky header */}
+      <div className="p-4 space-y-6 pb-20">
         
         {/* Description */}
         <div className="w-full group">
@@ -521,7 +532,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            />
         </div>
 
-        {/* REORDERED: Status Notes Timeline NOW BEFORE Materials */}
+        {/* Status Notes Timeline */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <MessageSquare size={14} /> 当前情况 / 备注
@@ -587,7 +598,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            </div>
         </div>
 
-        {/* Materials Sections - MOVED AFTER NOTES */}
+        {/* Materials Sections */}
         <div className="space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800">
            
            {/* Section 1: Reference Materials */}
@@ -607,7 +618,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                         )}
                    </div>
                    {renderMaterialList(referenceMaterials, 'REFERENCE')}
-                   {/* FIXED: Input appears here if adding Reference */}
                    {isAddingMaterial && addingCategory === 'REFERENCE' && <AddMaterialInput />}
                </div>
            )}
@@ -628,7 +638,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                     )}
                </div>
                {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
-               {/* FIXED: Input appears here if adding Deliverable */}
                {isAddingMaterial && addingCategory === 'DELIVERABLE' && <AddMaterialInput />}
            </div>
         </div>
