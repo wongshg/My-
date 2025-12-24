@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Matter, Template, TaskStatus, Task, Stage } from './types';
-import { ALL_TEMPLATES } from './constants';
+import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
 import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download } from 'lucide-react';
@@ -15,9 +15,69 @@ const THEME_KEY = 'opus_theme_v1';
 const saveMatters = (matters: Matter[]) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
 };
+
+// Helper to generate IDs
+const uuid = () => Math.random().toString(36).substr(2, 9);
+
 const loadMatters = (): Matter[] => {
   const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+  if (data) return JSON.parse(data);
+
+  // --- DEMO DATA GENERATION FOR FIRST TIME USERS ---
+  const demoMatter: Matter = {
+      id: uuid(),
+      title: '昌邑航通公司注销',
+      type: '外资SPV简易注销流程',
+      dueDate: Date.now() + 1000 * 60 * 60 * 24 * 14, // Due in 2 weeks
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5, // Created 5 days ago
+      lastUpdated: Date.now(),
+      archived: false,
+      stages: JSON.parse(JSON.stringify(SPV_DEREGISTRATION_TEMPLATE.stages)),
+      dismissedAttentionIds: []
+  };
+
+  // Populate Demo Data Status
+  // Stage 1: Internal Decision
+  if (demoMatter.stages[0]) {
+      const s1 = demoMatter.stages[0];
+      // 1. 编制注销方案 -> Completed
+      if (s1.tasks[0]) {
+          s1.tasks[0].status = TaskStatus.COMPLETED;
+          s1.tasks[0].statusNote = "已按集团最新模板编制，法务部已审核通过。";
+          if (s1.tasks[0].materials[0]) s1.tasks[0].materials[0].isReady = true; // Mock file ready
+      }
+      // 2. 报局战发部上会审议 -> Completed
+      if (s1.tasks[1]) {
+          s1.tasks[1].status = TaskStatus.COMPLETED;
+      }
+      // 3. 香港航通发起注销请示 -> Blocked (Showcase Blocking)
+      if (s1.tasks[2]) {
+          s1.tasks[2].status = TaskStatus.BLOCKED;
+          s1.tasks[2].statusUpdates = [{
+              id: uuid(),
+              content: "已邮件发送至香港秘书公司，等待董事签字决议。对方回复预计需3个工作日（至下周一）。",
+              timestamp: Date.now() - 1000 * 60 * 60 * 4
+          }];
+      }
+      // 4. 获取局战发部批复 -> Pending
+  }
+
+  // Stage 2: Prep -> In Progress
+  if (demoMatter.stages[1]) {
+      const s2 = demoMatter.stages[1];
+       // 1. 签署承诺书 -> In Progress
+      if (s2.tasks[0]) {
+          s2.tasks[0].status = TaskStatus.IN_PROGRESS;
+          s2.tasks[0].statusUpdates = [{
+              id: uuid(),
+              content: "文本已定稿，正在走内部印章申请流程 (OA流程号: 20240520001)。",
+              timestamp: Date.now() - 1000 * 60 * 60 * 24
+          }];
+      }
+  }
+
+  saveMatters([demoMatter]);
+  return [demoMatter];
 };
 
 const saveTemplates = (templates: Template[]) => {
@@ -32,8 +92,6 @@ const loadTemplates = (): Template[] => {
   }
   return JSON.parse(data);
 };
-
-const uuid = () => Math.random().toString(36).substr(2, 9);
 
 // --- Notification Logic ---
 const checkDueTasks = (matters: Matter[]) => {
