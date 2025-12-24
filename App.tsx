@@ -3,7 +3,7 @@ import { Matter, Template, TaskStatus, Task, Stage, JudgmentRecord } from './typ
 import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server } from 'lucide-react';
 import JSZip from 'jszip';
 import { getFile, saveFile } from './services/storage';
 
@@ -11,6 +11,7 @@ import { getFile, saveFile } from './services/storage';
 const STORAGE_KEY = 'opus_matters_v1';
 const TEMPLATE_KEY = 'opus_templates_v1';
 const THEME_KEY = 'opus_theme_v1';
+export const SETTINGS_KEY = 'opus_settings_v1'; // Export for services to use
 
 const saveMatters = (matters: Matter[]) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
@@ -735,50 +736,119 @@ const App: React.FC = () => {
     );
   };
 
-  const SettingsModal = () => (
+  const SettingsModal = () => {
+      // AI Settings State
+      const [apiKey, setApiKey] = useState('');
+      const [apiHost, setApiHost] = useState('https://api.chatanywhere.tech');
+      const [isSaving, setIsSaving] = useState(false);
+
+      useEffect(() => {
+          const loaded = localStorage.getItem(SETTINGS_KEY);
+          if (loaded) {
+              const parsed = JSON.parse(loaded);
+              setApiKey(parsed.apiKey || '');
+              setApiHost(parsed.apiHost || 'https://api.chatanywhere.tech');
+          }
+      }, []);
+
+      const handleSaveSettings = () => {
+          setIsSaving(true);
+          const settings = { apiKey, apiHost };
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+          setTimeout(() => {
+              setIsSaving(false);
+              alert("配置已保存");
+          }, 500);
+      };
+
+      return (
       <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => !isProcessingBackup && setIsSettingsOpen(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                  <Database size={20} className="text-slate-500 dark:text-slate-400" /> 数据与备份
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                  您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。<br/>
-                  <span className="text-xs text-slate-400 opacity-80 mt-1 block">备份包包含所有事项数据及附件文件。</span>
-              </p>
-              
-              <div className="space-y-3">
-                  <button 
-                    onClick={handleExportData}
-                    disabled={isProcessingBackup}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
-                  >
-                      {isProcessingBackup ? '处理中...' : <><Download size={18} /> 导出完整备份 (.zip)</>}
-                  </button>
-                  
-                  <div className="relative">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scaleIn flex flex-col max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <Settings size={20} className="text-slate-500 dark:text-slate-400" /> 设置
+                </h3>
+                <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+              </div>
+
+              {/* AI Config Section */}
+              <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-8">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                      <Server size={16} className="text-blue-500"/> AI 服务配置
+                  </h4>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">API Host (Base URL)</label>
+                          <input 
+                              className="w-full p-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                              value={apiHost}
+                              onChange={(e) => setApiHost(e.target.value)}
+                              placeholder="https://api.chatanywhere.tech"
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">API Key</label>
+                          <div className="relative">
+                              <input 
+                                  type="password"
+                                  className="w-full p-2.5 pl-9 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                  value={apiKey}
+                                  onChange={(e) => setApiKey(e.target.value)}
+                                  placeholder="sk-..."
+                              />
+                              <Key size={14} className="absolute left-3 top-3 text-slate-400" />
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1.5">Key 仅存储在本地浏览器中，用于请求 AI 接口。</p>
+                      </div>
                       <button 
-                        disabled={isProcessingBackup}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                          onClick={handleSaveSettings}
+                          disabled={isSaving}
+                          className="w-full py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50"
                       >
-                         {isProcessingBackup ? '处理中...' : <><Upload size={18} /> 恢复数据 (.zip)</>}
+                          {isSaving ? '保存中...' : '保存配置'}
                       </button>
-                      <input 
-                        ref={fileInputRef}
-                        type="file" 
-                        accept=".zip"
-                        disabled={isProcessingBackup}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
-                        onChange={handleImportData}
-                      />
                   </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <button onClick={() => setIsSettingsOpen(false)} disabled={isProcessingBackup} className="text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium text-sm disabled:opacity-50">关闭</button>
+              {/* Data & Backup Section */}
+              <div>
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                      <Database size={16} className="text-emerald-500"/> 数据与备份
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                      您的数据存储在浏览器本地。清除缓存可能会导致数据丢失。建议定期备份数据。<br/>
+                  </p>
+                  
+                  <div className="space-y-3">
+                      <button 
+                        onClick={handleExportData}
+                        disabled={isProcessingBackup}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50 text-xs"
+                      >
+                          {isProcessingBackup ? '处理中...' : <><Download size={16} /> 导出完整备份 (.zip)</>}
+                      </button>
+                      
+                      <div className="relative">
+                          <button 
+                            disabled={isProcessingBackup}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 text-xs"
+                          >
+                             {isProcessingBackup ? '处理中...' : <><Upload size={16} /> 恢复数据 (.zip)</>}
+                          </button>
+                          <input 
+                            ref={fileInputRef}
+                            type="file" 
+                            accept=".zip"
+                            disabled={isProcessingBackup}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
+                            onChange={handleImportData}
+                          />
+                      </div>
+                  </div>
               </div>
           </div>
       </div>
-  );
+  )};
 
   const activeMatter = matters.find(m => m.id === activeMatterId);
 

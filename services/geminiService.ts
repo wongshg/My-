@@ -1,14 +1,27 @@
 import { GoogleGenAI } from "@google/genai";
 import { Matter, TaskStatus } from "../types";
 
+const SETTINGS_KEY = 'opus_settings_v1';
+
 const processTask = (t: any) => {
   return `${t.title} [${t.status}]${t.statusNote ? `: ${t.statusNote}` : ''}`;
 };
 
 export const analyzeMatter = async (matter: Matter): Promise<string> => {
-  const apiKey = process.env.API_KEY;
+  let apiKey = process.env.API_KEY;
+
+  try {
+      const settingsStr = localStorage.getItem(SETTINGS_KEY);
+      if (settingsStr) {
+          const settings = JSON.parse(settingsStr);
+          if (settings.apiKey) apiKey = settings.apiKey;
+      }
+  } catch (e) {
+      console.warn("Failed to read settings from localStorage", e);
+  }
+
   if (!apiKey) {
-    return "API Key not found. Please configure the environment.";
+    return "API Key not found. Please configure it in the settings.";
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -59,6 +72,6 @@ export const analyzeMatter = async (matter: Matter): Promise<string> => {
     return response.text || "Unable to generate analysis.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Error connecting to AI Assistant. Please try again later.";
+    return "Error connecting to AI Assistant. Please check your API Key.";
   }
 };

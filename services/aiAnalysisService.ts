@@ -1,6 +1,7 @@
 import { Matter, AIAnalysisResult, JudgmentRecord } from "../types";
 
-const API_HOST = "https://api.chatanywhere.tech";
+const SETTINGS_KEY = 'opus_settings_v1';
+const DEFAULT_API_HOST = "https://api.chatanywhere.tech";
 
 // Helper to sanitize data: Remove tasks, stages, files. Only keep Judgment Timeline.
 const extractTimelineData = (matter: Matter) => {
@@ -20,13 +21,27 @@ export const analyzeJudgmentTimeline = async (
   allMatters: Matter[]
 ): Promise<AIAnalysisResult | null> => {
   
-  const apiKey = process.env.API_KEY;
+  // 1. Get Configuration from LocalStorage
+  let apiKey = process.env.API_KEY;
+  let apiHost = DEFAULT_API_HOST;
+
+  try {
+      const settingsStr = localStorage.getItem(SETTINGS_KEY);
+      if (settingsStr) {
+          const settings = JSON.parse(settingsStr);
+          if (settings.apiKey) apiKey = settings.apiKey;
+          if (settings.apiHost) apiHost = settings.apiHost;
+      }
+  } catch (e) {
+      console.warn("Failed to read settings from localStorage", e);
+  }
+
   if (!apiKey) {
-    console.error("API Key missing");
+    console.error("API Key missing. Please configure in settings.");
     return null;
   }
 
-  // 1. Prepare Data
+  // 2. Prepare Data
   // Exclude current matter from history to avoid self-comparison
   const historyMatters = allMatters
     .filter(m => m.id !== currentMatter.id && m.judgmentTimeline && m.judgmentTimeline.length > 0)
@@ -34,7 +49,7 @@ export const analyzeJudgmentTimeline = async (
 
   const currentData = extractTimelineData(currentMatter);
 
-  // 2. Construct Prompt
+  // 3. Construct Prompt
   const systemPrompt = `
     你是一个客观的法务运营分析助手。你的任务是对用户提供的【当前事项判断时间线】及【历史事项判断时间线】进行归纳与对照分析。
     
@@ -66,7 +81,10 @@ export const analyzeJudgmentTimeline = async (
   };
 
   try {
-    const response = await fetch(`${API_HOST}/v1/chat/completions`, {
+    // Remove trailing slash from host if present
+    const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
+
+    const response = await fetch(`${cleanHost}/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
