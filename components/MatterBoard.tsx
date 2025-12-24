@@ -69,9 +69,25 @@ const MatterBoard: React.FC<Props> = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
 
-  // Scroll to top on mount or matter change
+  // Robust Scroll Reset: Fixes issue where timeline content is scrolled up (hidden) on mobile due to browser scroll restoration
   useEffect(() => {
+    // 1. Immediate reset
     window.scrollTo(0, 0);
+    
+    // 2. Reset on next animation frame (after layout paint)
+    const rafId = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+    });
+
+    // 3. Reset after small delay to override any aggressive browser scroll restoration
+    const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+    }, 100);
+
+    return () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(timer);
+    }
   }, [matter.id]);
 
   // Handle Deep Linking
@@ -692,3 +708,72 @@ const MatterBoard: React.FC<Props> = ({
                     <button onClick={addTask} disabled={!selectedStageId} className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-300">
                         <Plus size={12} /> 任务
                     </button>
+                </div>
+
+                {/* Task List Content */}
+                <div className="p-2 space-y-2 bg-slate-50/30 dark:bg-slate-900 flex-1">
+                    {activeStage?.tasks.length === 0 && <div className="text-center py-8 text-slate-400 text-xs">暂无任务</div>}
+                    {activeStage?.tasks.map((task) => (
+                        <div 
+                            key={task.id} 
+                            onClick={() => setSelectedTaskId(task.id)}
+                            className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm flex items-start gap-3 active:scale-[0.98] transition-transform"
+                        >
+                            <div className={`w-1 self-stretch rounded-full ${task.status === TaskStatus.COMPLETED ? 'bg-emerald-400' : task.status === TaskStatus.BLOCKED ? 'bg-amber-400' : 'bg-blue-400'}`}></div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start mb-1">
+                                    <div className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">{task.title}</div>
+                                    <StatusBadge status={task.status} className="scale-90 origin-right" />
+                                </div>
+                                <div className="text-xs text-slate-400 truncate">{task.description || '无描述'}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+        </div>
+
+        {/* Sticky Resize Handle */}
+        {/* top calculation: 4rem (header) + heightVh */}
+        <div 
+            ref={resizeRef}
+            className="sticky z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shrink-0 shadow-sm"
+            style={{ top: `calc(4rem + ${topPanelHeightVh}vh)` }}
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+        >
+            <GripHorizontal size={16} className="text-slate-400" />
+        </div>
+
+        {/* Bottom Panel (Timeline) */}
+        {/* Natural Flow - allows body scroll. Removed min-h-screen to avoid blank space issues. */}
+        <div className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] bg-transparent relative z-0">
+             <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
+        </div>
+
+        {/* TASK DETAIL OVERLAY (Full Screen) */}
+        {selectedTaskId && activeTask && (
+            <div className="fixed inset-0 z-[60] bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full h-[100vh] overflow-hidden">
+                {/* Custom Header for Detail View */}
+                <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0 pt-[env(safe-area-inset-top)]">
+                    <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <span className="ml-2 font-bold text-slate-800 dark:text-white truncate flex-1">任务详情</span>
+                </div>
+                <div className="flex-1 overflow-y-auto touch-auto pb-[env(safe-area-inset-bottom)]">
+                    <TaskDetailPane 
+                        task={activeTask} 
+                        matterDueDate={matter.dueDate} 
+                        onUpdate={handleTaskUpdate} 
+                         onDelete={() => deleteTask(activeStage!.id, activeTask.id)} 
+                        isTemplateMode={isTemplateMode} 
+                    />
+                </div>
+            </div>
+        )}
+    </div>
+    </>
+  );
+};
+
+export default MatterBoard;
