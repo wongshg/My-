@@ -724,8 +724,8 @@ const MatterBoard: React.FC<Props> = ({
         </div>
 
         {/* Bottom Panel (Timeline) */}
-        {/* Natural Flow - allows body scroll */}
-        <div className="flex-1 min-h-[100vh] pb-[calc(2rem+env(safe-area-inset-bottom))] bg-transparent relative z-0">
+        {/* Natural Flow - allows body scroll. Removed min-h-screen to avoid blank space issues. */}
+        <div className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] bg-transparent relative z-0">
              <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
         </div>
 
