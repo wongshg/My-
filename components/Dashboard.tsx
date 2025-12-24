@@ -371,13 +371,15 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
-    <div className="min-h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] relative">
+    // Updated: Use h-[100dvh] and overflow-hidden to contain scroll within this div
+    // This allows content to scroll BEHIND the transparent absolute header.
+    <div className="h-[100dvh] w-full flex flex-col bg-[#f8fafc] dark:bg-[#020617] relative overflow-hidden">
       
       {/* 
-          Sticky Header
+          Header - Changed from fixed to absolute to sit inside the relative container
+          It floats on top of the scrolling content.
       */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 
+      <header className="absolute top-0 left-0 right-0 z-50 h-16 
         bg-white/10 dark:bg-slate-900/10 
         backdrop-blur-xl backdrop-saturate-150 
         border-b border-slate-200/50 dark:border-slate-800/50 
@@ -435,10 +437,13 @@ const Dashboard: React.FC<Props> = ({
         </div>
       </header>
 
-      {/* Content Area - Scrolls independently */}
-      <div className="flex-1 w-full pt-20">
-        {/* ADD PADDING BOTTOM FOR SAFE AREA TO PREVENT CONTENT HIDING BEHIND HOME BAR */}
-        <div className="max-w-7xl mx-auto p-6 min-h-full pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      {/* 
+          Content Area - Absolute inset-0 with overflow-y-auto 
+          This creates the scrollable area that fills the screen (including behind header).
+          pt-20 ensures content starts below header initially.
+      */}
+      <div className="absolute inset-0 overflow-y-auto pt-20 pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-7xl mx-auto p-6 min-h-full">
             
             {/* 
                 STATS AREA 
