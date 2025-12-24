@@ -405,27 +405,26 @@ const MatterBoard: React.FC<Props> = ({
     }
   };
 
-  // Shared Header Style for Liquid Glass Effect
-  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/10 dark:bg-slate-900/10 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
+  // Shared Header Style for Liquid Glass Effect - Sticky inside columns
+  const columnHeaderClass = "flex-none h-14 flex items-center justify-between px-4 sticky top-0 z-20 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors";
 
   return (
     // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
     <div 
-        className="min-h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden"
+        className="min-h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden relative"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
     >
         
         {/* 
-            ENHANCED STICKY FROSTED HEADER 
-            - Unified liquid glass style
+            ENHANCED HEADER (Absolute Positioned for Scroll-Under)
         */}
-        <header className="flex-none z-50 h-16 
-            bg-white/10 dark:bg-slate-900/10 
+        <header className="absolute top-0 left-0 right-0 z-50 h-16 
+            bg-white/40 dark:bg-slate-900/40 
             backdrop-blur-xl backdrop-saturate-150 
             border-b border-slate-200/50 dark:border-slate-800/50 
-            px-4 flex items-center justify-between shrink-0 transition-all">
+            px-4 flex items-center justify-between transition-all">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button 
               onClick={goMobileBack}
@@ -436,10 +435,9 @@ const MatterBoard: React.FC<Props> = ({
             <div className="h-5 w-[1px] bg-slate-300/50 dark:bg-slate-700"></div>
              
              {!isTemplateMode && (
-                 // DESIGN UPDATE: Deep Black Squircle Logo - REMOVED SHADOW
+                 // DESIGN UPDATE: Deep Black Squircle Logo
                 <div className="flex items-center gap-2 mr-2 shrink-0 group">
                      <div className="h-7 w-7 relative rounded-[22%] bg-black flex items-center justify-center overflow-hidden ring-1 ring-white/10">
-                         {/* Subtle gloss */}
                          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
                          <span className="text-white font-bold text-[11px] tracking-tighter z-10 relative top-[1px]">Or</span>
                      </div>
@@ -581,7 +579,7 @@ const MatterBoard: React.FC<Props> = ({
 
         {/* AI Panel */}
         {aiAnalysis && !isTemplateMode && (
-            <div className="bg-indigo-600 text-white p-4 shrink-0 shadow-lg relative animate-slideDown z-30 flex-none">
+            <div className="absolute top-16 left-0 right-0 z-40 bg-indigo-600 text-white p-4 shadow-lg animate-slideDown">
               <div className="max-w-4xl mx-auto flex items-start gap-4">
                 <Sparkles size={20} className="mt-1 text-indigo-300 shrink-0" />
                 <div className="flex-1 text-sm whitespace-pre-wrap leading-relaxed opacity-95 font-light">
@@ -592,8 +590,8 @@ const MatterBoard: React.FC<Props> = ({
             </div>
         )}
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-hidden relative flex flex-col md:flex-row w-full">
+        {/* Content Area - Full Height, with padding for header */}
+        <div className="flex-1 flex flex-col md:flex-row w-full overflow-hidden absolute inset-0 top-0 pt-0">
             
             {/* Col 1: Stages */}
             <div className={`
@@ -602,7 +600,7 @@ const MatterBoard: React.FC<Props> = ({
                 border-r border-slate-200 dark:border-slate-800 
                 flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('STAGES')} md:flex
-                pb-[env(safe-area-inset-bottom)]
+                pt-16 pb-[env(safe-area-inset-bottom)]
             `}>
                 <div className={columnHeaderClass}>
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">阶段</span>
@@ -731,7 +729,7 @@ const MatterBoard: React.FC<Props> = ({
                 border-r border-slate-200 dark:border-slate-700 
                 flex-col overflow-y-auto overscroll-y-contain
                 ${getColVisibility('TASKS')} md:flex
-                pb-[env(safe-area-inset-bottom)]
+                pt-16 pb-[env(safe-area-inset-bottom)]
             `}>
                 <div className={columnHeaderClass}>
                     <h2 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[160px]" title={activeStage?.title}>
@@ -853,7 +851,7 @@ const MatterBoard: React.FC<Props> = ({
                 flex-col min-w-0 
                 overflow-y-auto overscroll-y-contain
                 ${getColVisibility('DETAILS')} md:flex
-                pb-[env(safe-area-inset-bottom)]
+                pt-16 pb-[env(safe-area-inset-bottom)]
             `}>
                 {activeTask ? (
                     <TaskDetailPane 

@@ -280,13 +280,11 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   const renderMaterialList = (list: Material[], type: 'REFERENCE' | 'DELIVERABLE') => {
       const isRef = type === 'REFERENCE';
       
-      // If reference list is empty and user not adding, HIDE IT completely to save space
-      if (isRef && list.length === 0 && !isAddingMaterial) {
-          return null;
-      }
-
-      if (!isRef && list.length === 0 && !isAddingMaterial) {
-          return <div className="text-sm text-slate-300 italic py-1">暂无交付产物</div>;
+      if (list.length === 0) {
+          // If in template mode and adding material to this section, don't show "None"
+          if (isAddingMaterial && addingCategory === type) return null;
+          // If empty and not adding, show empty state
+          return <div className="text-sm text-slate-300 italic py-1">暂无{isRef ? '参考文件' : '交付产物'}</div>;
       }
 
       return (
@@ -376,6 +374,33 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
           </div>
       );
   }
+
+  // Input Rendering Component
+  const AddMaterialInput = () => (
+      <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+          <Circle size={20} className="text-slate-300" />
+          <div className="flex-1">
+              <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">
+                  {addingCategory === 'REFERENCE' ? '新增参考资料' : '新增交付产物'}
+              </div>
+              <input
+                  ref={materialInputRef}
+                  value={newMaterialName}
+                  onChange={(e) => setNewMaterialName(e.target.value)}
+                  placeholder="输入名称 (Enter确认)"
+                  className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent"
+                  onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirmAddMaterial();
+                  if (e.key === 'Escape') setIsAddingMaterial(false);
+                  }}
+              />
+          </div>
+          <div className="flex items-center gap-1">
+              <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+              <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
+          </div>
+      </div>
+  );
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-900 animate-fadeIn">
@@ -480,7 +505,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-6">
         
-        {/* Description - Minimalist, directly under header */}
+        {/* Description */}
         <div className="w-full group">
            <textarea
              ref={descriptionRef}
@@ -496,76 +521,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            />
         </div>
 
-        {/* Materials Sections */}
-        <div className="space-y-6">
-           
-           {/* Section 1: Reference Materials */}
-           {(referenceMaterials.length > 0 || isTemplateMode) && (
-               <div>
-                   <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                            <FileText size={14} /> 参考资料 / 模板
-                        </label>
-                        {isTemplateMode && !isAddingMaterial && (
-                            <button 
-                                onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
-                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                            >
-                                <Plus size={12} /> 添加参考文件
-                            </button>
-                        )}
-                   </div>
-                   {renderMaterialList(referenceMaterials, 'REFERENCE')}
-               </div>
-           )}
-
-           {/* Section 2: Deliverables */}
-           <div>
-               <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider flex items-center gap-2">
-                        <Package size={14} /> 所需产物 / 交付物
-                    </label>
-                    {!isAddingMaterial && (
-                        <button 
-                            onClick={() => { setIsAddingMaterial(true); setAddingCategory('DELIVERABLE'); }} 
-                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                        >
-                            <Plus size={12} /> 添加产物项
-                        </button>
-                    )}
-               </div>
-               {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
-           </div>
-
-           {/* Add Material Input */}
-            {isAddingMaterial && (
-            <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
-                <Circle size={20} className="text-slate-300" />
-                <div className="flex-1">
-                    <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">
-                        {addingCategory === 'REFERENCE' ? '新增参考资料' : '新增交付产物'}
-                    </div>
-                    <input
-                        ref={materialInputRef}
-                        value={newMaterialName}
-                        onChange={(e) => setNewMaterialName(e.target.value)}
-                        placeholder="输入名称 (Enter确认)"
-                        className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent"
-                        onKeyDown={(e) => {
-                        if (e.key === 'Enter') confirmAddMaterial();
-                        if (e.key === 'Escape') setIsAddingMaterial(false);
-                        }}
-                    />
-                </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
-                    <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
-                </div>
-            </div>
-            )}
-        </div>
-
-        {/* Status Notes Timeline */}
+        {/* REORDERED: Status Notes Timeline NOW BEFORE Materials */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <MessageSquare size={14} /> 当前情况 / 备注
@@ -628,6 +584,52 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
               {(!task.statusUpdates?.length && !task.statusNote) && (
                   <div className="text-xs text-slate-400 pl-6 italic pt-2">暂无记录</div>
               )}
+           </div>
+        </div>
+
+        {/* Materials Sections - MOVED AFTER NOTES */}
+        <div className="space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+           
+           {/* Section 1: Reference Materials */}
+           {(referenceMaterials.length > 0 || isTemplateMode) && (
+               <div>
+                   <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                            <FileText size={14} /> 参考资料 / 模板
+                        </label>
+                        {isTemplateMode && !isAddingMaterial && (
+                            <button 
+                                onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                            >
+                                <Plus size={12} /> 添加参考文件
+                            </button>
+                        )}
+                   </div>
+                   {renderMaterialList(referenceMaterials, 'REFERENCE')}
+                   {/* FIXED: Input appears here if adding Reference */}
+                   {isAddingMaterial && addingCategory === 'REFERENCE' && <AddMaterialInput />}
+               </div>
+           )}
+
+           {/* Section 2: Deliverables */}
+           <div>
+               <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+                        <Package size={14} /> 所需产物 / 交付物
+                    </label>
+                    {!isAddingMaterial && (
+                        <button 
+                            onClick={() => { setIsAddingMaterial(true); setAddingCategory('DELIVERABLE'); }} 
+                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                        >
+                            <Plus size={12} /> 添加产物项
+                        </button>
+                    )}
+               </div>
+               {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
+               {/* FIXED: Input appears here if adding Deliverable */}
+               {isAddingMaterial && addingCategory === 'DELIVERABLE' && <AddMaterialInput />}
            </div>
         </div>
 
