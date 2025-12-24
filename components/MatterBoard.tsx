@@ -453,8 +453,8 @@ const MatterBoard: React.FC<Props> = ({
   );
 
   return (
-    // Updated: Use fixed inset-0 to ensure full coverage on iOS and prevent overall page scrolling rubber-banding
-    <div className="fixed inset-0 w-full h-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+    // Updated: Use fixed with h-[100dvh] instead of inset-0 to force full viewport coverage including area behind Safari address bar
+    <div className="fixed left-0 top-0 w-full h-[100dvh] flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
         
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
