@@ -38,29 +38,30 @@
     </script>
     <style>
       /* 
-        IOS SAFARI IMMERSIVE MODE CONFIG
-        Use 100vh instead of 100dvh to force content BEHIND the bottom toolbar.
-        This enables the transparency effect.
+        IOS SAFARI CONFIG
+        Allow native body scrolling to enable address bar collapsing.
+        min-height: 100vh ensures full background coverage.
       */
-      html, body, #root {
-        height: 100vh; /* Changed from 100dvh to 100vh */
-        width: 100%;
-        overflow: hidden; 
-        margin: 0;
-        padding: 0;
+      html {
         -webkit-text-size-adjust: 100%;
-        overscroll-behavior-y: none;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background-color: #f8fafc;
       }
       
+      body, #root {
+        min-height: 100vh;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        /* Removed overflow:hidden to allow document scroll */
+      }
+      
       /* Dark Mode Body Background */
-      html.dark body, html.dark #root {
+      html.dark, html.dark body, html.dark #root {
         background-color: #020617; 
         color: #f8fafc;
       }
 
-      /* Selection color */
       ::selection {
         background: #e0f2fe; 
         color: #0f172a;
@@ -70,7 +71,6 @@
         color: #ffffff;
       }
 
-      /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;

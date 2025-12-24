@@ -18,7 +18,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Ensure panel opens when new analysis arrives
   useEffect(() => {
       if (matter.latestAnalysis) {
           setIsAiPanelExpanded(true);
@@ -65,18 +64,13 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       alert("请先添加至少一条判断记录");
       return;
     }
-    
     setIsAiPanelExpanded(true);
     setIsAnalyzing(true);
     setShowHistory(false);
-    
     const result = await analyzeJudgmentTimeline(matter, allMatters);
-    
     if (result) {
         const resultWithId = { ...result, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
-        
         const newHistory = [resultWithId, ...(matter.analysisHistory || [])];
-        
         onUpdate({ 
             ...matter, 
             latestAnalysis: resultWithId,
@@ -84,71 +78,43 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
             lastUpdated: Date.now()
         });
     }
-    
     setIsAnalyzing(false);
   };
 
   const getStatusBadge = (status?: TaskStatus) => {
     if (!status) return null;
     const opt = statusOptions.find(o => o.value === status) || { label: '其他', color: 'text-slate-600 bg-slate-50 border-slate-200' };
-    return (
-      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${opt.color} font-medium inline-flex items-center gap-1`}>
-        {opt.label}
-      </span>
-    );
+    return <span className={`text-[10px] px-1.5 py-0.5 rounded border ${opt.color} font-medium inline-flex items-center gap-1`}>{opt.label}</span>;
   };
 
   const formatDate = (ts: number) => {
       return new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
-  // --- AI Analysis Content Component (Shared) ---
   const AnalysisResultCard = ({ result }: { result: AIAnalysisResult }) => (
       <div className="space-y-4 text-sm animate-fadeIn">
-          {/* Summary */}
           <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">当前判断摘要</h4>
-              <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm">
-                  {result.summary}
-              </p>
+              <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm">{result.summary}</p>
           </div>
-
-          {/* Evolution */}
           <div className="space-y-1">
-              <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  <History size={12}/> 判断演变
-              </h4>
-              <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
-                  {result.evolution}
-              </p>
+              <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><History size={12}/> 判断演变</h4>
+              <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">{result.evolution}</p>
           </div>
-
-          {/* Blockers & Similar */}
           {result.blockerTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                  {result.blockerTags.map((tag, i) => (
-                      <span key={i} className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800">
-                          {tag}
-                      </span>
-                  ))}
-              </div>
+              <div className="flex flex-wrap gap-2">{result.blockerTags.map((tag, i) => (<span key={i} className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800">{tag}</span>))}</div>
           )}
-          
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">
-              AI 辅助分析 • 仅供参考
-          </div>
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">AI 辅助分析 • 仅供参考</div>
       </div>
   );
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50 relative">
+    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 rounded-lg">
       
-      {/* 
-          1. Header (Fixed) 
-      */}
-      <div className="p-4 md:p-6 pb-2 shrink-0 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur z-10">
-        <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <GitCommit className="text-blue-600 dark:text-blue-400" />
+      {/* Header */}
+      <div className="p-4 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50">
+        <h2 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <GitCommit size={16} className="text-blue-600 dark:text-blue-400" />
             判断时间线
         </h2>
         
@@ -156,91 +122,42 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
             <button 
                 onClick={handleRunAnalysis}
                 disabled={isAnalyzing}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors shadow-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50`}
             >
-                <Sparkles size={14} className={isAnalyzing ? 'animate-pulse' : ''} />
+                <Sparkles size={12} className={isAnalyzing ? 'animate-pulse' : ''} />
                 {isAnalyzing ? '分析中...' : 'AI 辅助分析'}
             </button>
         )}
       </div>
 
-      {/* 
-          2. Main Scrollable Container
-          Contains: AI Panel, Input, and Timeline List
-          This ensures vertical scrolling works smoothly across all elements.
-          pb-[calc(1rem+env(safe-area-inset-bottom))] ensures content is not hidden behind home indicator,
-          while the background (bg-slate-50/50) extends fully.
-          
-          UPDATE: Added extra padding (pb-24) to ensure content can be scrolled above the iOS bottom toolbar when using 100vh
-      */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6 pb-24 md:pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      {/* Content */}
+      <div className="p-4 space-y-6">
          
-         {/* A. AI Panel (If exists) */}
+         {/* AI Panel */}
          {(matter.latestAnalysis || isAnalyzing) && (
              <div className="bg-white dark:bg-slate-800 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm overflow-hidden transition-all">
-                 <div 
-                    className="bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2 flex items-center justify-between cursor-pointer border-b border-indigo-100 dark:border-indigo-900/50 sticky top-0 z-10"
-                    onClick={() => setIsAiPanelExpanded(!isAiPanelExpanded)}
-                 >
+                 <div className="bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2 flex items-center justify-between cursor-pointer border-b border-indigo-100 dark:border-indigo-900/50" onClick={() => setIsAiPanelExpanded(!isAiPanelExpanded)}>
                      <div className="flex items-center gap-2">
                          <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
                          <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">智能归纳与对照</span>
-                         {matter.latestAnalysis && !isAnalyzing && (
-                             <span className="text-[10px] text-slate-400 ml-1">
-                                 {new Date(matter.latestAnalysis.timestamp).toLocaleTimeString()}
-                             </span>
-                         )}
+                         {matter.latestAnalysis && !isAnalyzing && (<span className="text-[10px] text-slate-400 ml-1">{new Date(matter.latestAnalysis.timestamp).toLocaleTimeString()}</span>)}
                      </div>
                      <div className="flex items-center gap-2">
-                         {matter.analysisHistory && matter.analysisHistory.length > 1 && (
-                             <button 
-                                onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }}
-                                className={`text-[10px] px-2 py-0.5 rounded border ${showHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-500 border-slate-200'}`}
-                             >
-                                {showHistory ? '返回最新' : '历史记录'}
-                             </button>
-                         )}
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }}
-                            disabled={isAnalyzing}
-                            className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"
-                            title="重新分析"
-                         >
-                            <RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/>
-                         </button>
-                         <div className="text-indigo-400">
-                             {isAiPanelExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                         </div>
+                         {matter.analysisHistory && matter.analysisHistory.length > 1 && (<button onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }} className={`text-[10px] px-2 py-0.5 rounded border ${showHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-500 border-slate-200'}`}>{showHistory ? '返回最新' : '历史记录'}</button>)}
+                         <button onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }} disabled={isAnalyzing} className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"><RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/></button>
+                         <div className="text-indigo-400">{isAiPanelExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}</div>
                      </div>
                  </div>
-
                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isAiPanelExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                      <div className="p-4">
-                         {isAnalyzing ? (
-                             <div className="py-6 flex flex-col items-center justify-center text-slate-400 gap-2">
-                                 <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
-                                 <span className="text-xs">正在分析时间线数据...</span>
-                             </div>
-                         ) : showHistory && matter.analysisHistory ? (
-                             <div className="space-y-4">
-                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">历史分析记录 ({matter.analysisHistory.length})</h4>
-                                 {matter.analysisHistory.map((hist, idx) => (
-                                     <div key={hist.id || idx} className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0">
-                                         <div className="text-[10px] text-slate-400 mb-1">{new Date(hist.timestamp).toLocaleString()}</div>
-                                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{hist.summary}</p>
-                                     </div>
-                                 ))}
-                             </div>
-                         ) : matter.latestAnalysis ? (
-                             <AnalysisResultCard result={matter.latestAnalysis} />
-                         ) : null}
+                         {isAnalyzing ? (<div className="py-6 flex flex-col items-center justify-center text-slate-400 gap-2"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div><span className="text-xs">正在分析时间线数据...</span></div>) : showHistory && matter.analysisHistory ? (<div className="space-y-4"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">历史分析记录 ({matter.analysisHistory.length})</h4>{matter.analysisHistory.map((hist, idx) => (<div key={hist.id || idx} className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"><div className="text-[10px] text-slate-400 mb-1">{new Date(hist.timestamp).toLocaleString()}</div><p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{hist.summary}</p></div>))}</div>) : matter.latestAnalysis ? (<AnalysisResultCard result={matter.latestAnalysis} />) : null}
                      </div>
                  </div>
              </div>
          )}
 
-         {/* B. Input Area */}
-         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 md:p-4 transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30">
+         {/* Input */}
+         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30">
             <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -248,75 +165,31 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                 className="w-full text-sm bg-transparent border-none outline-none resize-none placeholder-slate-400 text-slate-700 dark:text-slate-200 min-h-[60px]"
                 onKeyDown={(e) => { if(e.ctrlKey && e.key === 'Enter') handleSubmit(); }}
             />
-            
             <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex gap-1 overflow-x-auto scrollbar-hide">
                 {statusOptions.map(opt => (
-                    <button
-                    key={opt.value}
-                    onClick={() => setSelectedStatus(selectedStatus === opt.value ? null : opt.value)}
-                    className={`
-                        shrink-0 p-1.5 rounded-full transition-all border
-                        ${selectedStatus === opt.value 
-                        ? opt.color + ' ring-1 ring-offset-1 dark:ring-offset-slate-800' 
-                        : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}
-                    `}
-                    title={opt.label}
-                    >
-                    <opt.icon size={16} />
-                    </button>
+                    <button key={opt.value} onClick={() => setSelectedStatus(selectedStatus === opt.value ? null : opt.value)} className={`shrink-0 p-1.5 rounded-full transition-all border ${selectedStatus === opt.value ? opt.color + ' ring-1 ring-offset-1 dark:ring-offset-slate-800' : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`} title={opt.label}><opt.icon size={16} /></button>
                 ))}
                 </div>
-
-                <button 
-                onClick={handleSubmit}
-                disabled={!content.trim()}
-                className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-1"
-                >
-                <Send size={12} /> 提交
-                </button>
+                <button onClick={handleSubmit} disabled={!content.trim()} className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-1"><Send size={12} /> 提交</button>
             </div>
          </div>
 
-         {/* C. Timeline List */}
+         {/* Timeline */}
          <div>
             {!matter.judgmentTimeline || matter.judgmentTimeline.length === 0 ? (
-            <div className="text-center py-8 opacity-50">
-                <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <GitCommit size={20} className="text-slate-400" />
-                </div>
-                <p className="text-xs text-slate-400">暂无记录，添加一条以开始。</p>
-            </div>
+            <div className="text-center py-8 opacity-50"><div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><GitCommit size={20} className="text-slate-400" /></div><p className="text-xs text-slate-400">暂无记录，添加一条以开始。</p></div>
             ) : (
             <div className="space-y-0 pl-3 border-l-2 border-slate-200 dark:border-slate-700 ml-2 py-1">
                 {matter.judgmentTimeline.map((record, index) => (
                 <div key={record.id} className="relative pl-5 pb-6 last:pb-0 group">
-                    <div className={`
-                        absolute left-[-7px] top-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 shadow-sm
-                        ${index === 0 ? 'bg-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}
-                    `}></div>
-                    
-                    <div className={`
-                        rounded-lg border p-3 transition-all
-                        ${index === 0 
-                            ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-800 shadow-sm' 
-                            : 'bg-white/60 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700 grayscale hover:grayscale-0'}
-                    `}>
+                    <div className={`absolute left-[-7px] top-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${index === 0 ? 'bg-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <div className={`rounded-lg border p-3 transition-all ${index === 0 ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-800 shadow-sm' : 'bg-white/60 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700 grayscale hover:grayscale-0'}`}>
                         <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2">
-                                {getStatusBadge(record.status)}
-                                {index === 0 && (
-                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 rounded">Current</span>
-                                )}
-                            </div>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                                {formatDate(record.timestamp)}
-                            </span>
+                            <div className="flex items-center gap-2">{getStatusBadge(record.status)}{index === 0 && (<span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 rounded">Current</span>)}</div>
+                            <span className="text-[10px] text-slate-400 font-mono">{formatDate(record.timestamp)}</span>
                         </div>
-                        
-                        <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                            {record.content}
-                        </div>
+                        <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{record.content}</div>
                     </div>
                 </div>
                 ))}

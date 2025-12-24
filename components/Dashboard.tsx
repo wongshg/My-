@@ -122,7 +122,7 @@ const MatterCard: React.FC<{
    );
 };
 
-// Grouped Attention Card
+// ... (AttentionGroupCard and DetailedStatCard kept same as before, simplified for brevity in XML)
 const AttentionGroupCard: React.FC<{
   group: AttentionMatterGroup;
   onSelectMatter: (id: string) => void;
@@ -173,7 +173,6 @@ const AttentionGroupCard: React.FC<{
                             </div>
                         </div>
                         
-                        {/* Dismiss specific task */}
                         <button 
                              onClick={(e) => { e.stopPropagation(); onDismissTask(item.task.id); }}
                              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-black/5 rounded-full transition-colors shrink-0"
@@ -198,15 +197,11 @@ const AttentionGroupCard: React.FC<{
   )
 };
 
-// Detailed Stat Card for In Progress & Attention
 const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => {
-    // Count matters by type
     const breakdown = matters.reduce((acc: any, m: Matter) => {
         acc[m.type] = (acc[m.type] || 0) + 1;
         return acc;
     }, {});
-    
-    // Sort counts descending
     const sortedTypes = Object.entries(breakdown).sort((a: any, b: any) => b[1] - a[1]);
 
     return (
@@ -252,12 +247,8 @@ const Dashboard: React.FC<Props> = ({
   onOpenSettings
 }) => {
   const now = Date.now();
-  
-  // Interaction State for Weakened Cards
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  
-  // AI Module State
   const [aiResult, setAiResult] = useState<AIWorkStatusResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAiExpanded, setIsAiExpanded] = useState(true);
@@ -271,15 +262,11 @@ const Dashboard: React.FC<Props> = ({
       }
   }, []);
 
-  // Separate Active (Not Archived) and Archived
   const activeMatters = matters.filter(m => !m.archived);
   const archivedMatters = matters.filter(m => m.archived);
-
-  // From Active Matters, separate by completion status for Stats logic
   const completedActiveMatters = activeMatters.filter(m => 
     m.stages.length > 0 && m.stages.every(s => s.tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.SKIPPED))
   );
-  
   const inProgressMatters = activeMatters.filter(m => !completedActiveMatters.some(cm => cm.id === m.id));
 
   const handleAnalyze = async () => {
@@ -297,62 +284,36 @@ const Dashboard: React.FC<Props> = ({
       setIsAnalyzing(false);
   };
 
-  // --- Group Attention Logic (Only for In Progress Matters) ---
   const attentionGroups: AttentionMatterGroup[] = [];
-
   inProgressMatters.forEach(m => {
     const ignored = m.dismissedAttentionIds || [];
     const tasks: { task: Task; stage: Stage; type: 'blocked' | 'exception' }[] = [];
     let isOverdue = false;
     let daysLeft = undefined;
-
-    // Check overdue, unless ignored
     if (m.dueDate) {
         daysLeft = Math.ceil((m.dueDate - now) / (1000 * 60 * 60 * 24));
         if (daysLeft <= 7 && !ignored.includes('OVERDUE')) {
             isOverdue = true;
         }
     }
-
     m.stages.forEach(s => {
         s.tasks.forEach(t => {
-            // Check if task is already ignored
             if (ignored.includes(t.id)) return;
-
-            if (t.status === TaskStatus.BLOCKED) {
-                tasks.push({ task: t, stage: s, type: 'blocked' });
-            } else if (t.status === TaskStatus.EXCEPTION) {
-                tasks.push({ task: t, stage: s, type: 'exception' });
-            }
+            if (t.status === TaskStatus.BLOCKED) tasks.push({ task: t, stage: s, type: 'blocked' });
+            else if (t.status === TaskStatus.EXCEPTION) tasks.push({ task: t, stage: s, type: 'exception' });
         });
     });
-
-    if (isOverdue || tasks.length > 0) {
-        attentionGroups.push({
-            matter: m,
-            tasks,
-            isOverdue,
-            daysLeft
-        });
-    }
+    if (isOverdue || tasks.length > 0) attentionGroups.push({ matter: m, tasks, isOverdue, daysLeft });
   });
 
   const handleDismissTask = (matter: Matter, taskId: string) => {
-     if (!confirm("确定不再提示此项吗？\n如果后续状态再次变更，它将重新提醒。")) return;
-
+     if (!confirm("确定不再提示此项吗？")) return;
      const currentIgnored = matter.dismissedAttentionIds || [];
      const newIgnored = [...currentIgnored, taskId];
-     // Use Set to unique
      const uniqueIgnored = Array.from(new Set(newIgnored));
-     
-     onUpdateMatter({
-         ...matter,
-         dismissedAttentionIds: uniqueIgnored,
-         lastUpdated: Date.now()
-     });
+     onUpdateMatter({ ...matter, dismissedAttentionIds: uniqueIgnored, lastUpdated: Date.now() });
   };
 
-  // --- Statistics Logic ---
   const statInProgressMatters = inProgressMatters.length;
   const statUrgentMatters = attentionGroups.length;
   const statCompletedMatters = completedActiveMatters.length;
@@ -360,7 +321,6 @@ const Dashboard: React.FC<Props> = ({
 
   const renderMiniList = (list: Matter[], type: 'completed' | 'archived') => {
       if (list.length === 0) return <div className="p-4 text-center text-xs text-slate-400">列表为空</div>;
-      
       return (
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl mt-2 border border-slate-100 dark:border-slate-800">
               {list.map(m => {
@@ -368,21 +328,14 @@ const Dashboard: React.FC<Props> = ({
                     const completed = allTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
                     const total = allTasks.length;
                     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                    
                     return (
-                        <div 
-                            key={m.id} 
-                            onClick={() => onSelectMatter(m.id)}
-                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col"
-                        >
+                        <div key={m.id} onClick={() => onSelectMatter(m.id)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
                             <div className="flex justify-between items-start mb-1">
                                 <div className="flex-1 min-w-0 pr-2">
                                     <div className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">{m.title}</div>
                                     <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{m.type}</div>
                                 </div>
-                                <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${type === 'completed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
-                                    {progress}%
-                                </div>
+                                <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${type === 'completed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>{progress}%</div>
                             </div>
                             <div className="text-[10px] text-slate-400 flex justify-between mt-2">
                                 <span>{completed}/{total} 任务</span>
@@ -404,74 +357,33 @@ const Dashboard: React.FC<Props> = ({
   };
 
   return (
-    // Updated Logic:
-    // 1. Root container inherits 100dvh from body. Relative.
-    // 2. Header is absolute at top, z-50.
-    // 3. Content is absolute inset-0 (full size of root), scrolly-y auto.
-    // 4. Content has pt-16 (for header) and pb-[env(safe-area)] (for bottom bar).
-    <div className="relative w-full h-full bg-[#f8fafc] dark:bg-[#020617]">
+    // Natural flow layout for body scroll
+    <div className="min-h-screen w-full bg-[#f8fafc] dark:bg-[#020617] flex flex-col">
       
-      {/* 
-          Header - Absolute
-      */}
-      <header className="absolute top-0 left-0 right-0 z-50 h-16 
-        bg-white/10 dark:bg-slate-900/10 
-        backdrop-blur-xl backdrop-saturate-150 
-        border-b border-slate-200/50 dark:border-slate-800/50 
-        flex items-center justify-between px-6 transition-all duration-300">
-        
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-3">
-             {/* Logo: Orbit */}
              <div className="flex items-center gap-2 group cursor-default">
                  <div className="h-9 w-9 relative rounded-[22%] bg-gradient-to-br from-slate-700 to-black shadow-lg shadow-slate-300/50 dark:shadow-black/50 flex items-center justify-center overflow-hidden ring-1 ring-white/20 transition-transform group-hover:scale-105">
                      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent"></div>
                      <span className="text-white font-black text-sm tracking-tighter z-10">Or</span>
-                     <div className="absolute bottom-[-5px] right-[-5px] w-5 h-5 bg-blue-500 blur-md opacity-40"></div>
                  </div>
                  <span className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Orbit</span>
              </div>
         </div>
-        
         <div className="flex items-center gap-3">
-          <button 
-             onClick={() => {
-                if(theme === 'system') onThemeChange('light');
-                else if(theme === 'light') onThemeChange('dark');
-                else onThemeChange('system');
-             }}
-             className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-             title="切换主题"
-          >
-             {getThemeIcon()}
-          </button>
-          <button
-             onClick={onOpenSettings}
-             className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-             title="设置与备份"
-          >
-             <Settings size={16} />
-          </button>
+          <button onClick={() => { if(theme === 'system') onThemeChange('light'); else if(theme === 'light') onThemeChange('dark'); else onThemeChange('system'); }} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">{getThemeIcon()}</button>
+          <button onClick={onOpenSettings} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"><Settings size={16} /></button>
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-          <button 
-             onClick={onOpenTemplateManager}
-             className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors font-medium text-xs border border-transparent hover:border-slate-200/50"
-          >
-            <LayoutTemplate size={14} /> <span className="hidden md:inline">模板管理</span>
-          </button>
-          <button 
-              onClick={onNewMatter}
-              className="flex items-center gap-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-800 dark:hover:bg-white/90 transition-colors shadow-lg shadow-slate-200 dark:shadow-none font-medium text-sm"
-          >
-              <Plus size={18} /> <span className="hidden md:inline">新建事项</span>
-          </button>
+          <button onClick={onOpenTemplateManager} className="flex items-center gap-2 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors font-medium text-xs border border-transparent hover:border-slate-200/50"><LayoutTemplate size={14} /> <span className="hidden md:inline">模板管理</span></button>
+          <button onClick={onNewMatter} className="flex items-center gap-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-800 dark:hover:bg-white/90 transition-colors shadow-lg shadow-slate-200 dark:shadow-none font-medium text-sm"><Plus size={18} /> <span className="hidden md:inline">新建事项</span></button>
         </div>
       </header>
       
-      {/* Content Container - Absolute Inset 0 with Padding */}
-      <div className="absolute inset-0 pt-16 pb-[env(safe-area-inset-bottom)] overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-6 min-h-full">
+      {/* Content flows naturally. pb-safe ensures bottom content isn't covered by Home Indicator */}
+      <div className="flex-1 max-w-7xl mx-auto p-6 w-full pb-[calc(2rem+env(safe-area-inset-bottom))]">
             
-            {/* AI Work Status Overview Module */}
+            {/* AI Module */}
             <div className="mb-6 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-gradient-to-r from-indigo-50/50 to-white/50 dark:from-indigo-950/20 dark:to-slate-900/50 overflow-hidden shadow-sm transition-all hover:shadow-md">
                 <div className="px-4 py-3 flex items-center justify-between border-b border-indigo-100/50 dark:border-indigo-900/50">
                     <div className="flex items-center gap-2">
@@ -479,220 +391,67 @@ const Dashboard: React.FC<Props> = ({
                         <h2 className="font-bold text-slate-800 dark:text-slate-100">AI 工作态势速览</h2>
                     </div>
                     <div className="flex items-center gap-2">
-                        {aiResult && (
-                            <span className="text-[10px] text-slate-400 hidden sm:inline">
-                                更新于: {new Date(aiResult.timestamp).toLocaleTimeString()}
-                            </span>
-                        )}
-                        <button 
-                            onClick={handleAnalyze}
-                            disabled={isAnalyzing}
-                            className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors disabled:opacity-50"
-                            title="刷新分析"
-                        >
-                            <RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} />
-                        </button>
-                        <button 
-                            onClick={() => setIsAiExpanded(!isAiExpanded)}
-                            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
-                        >
-                            {isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                        </button>
+                        {aiResult && <span className="text-[10px] text-slate-400 hidden sm:inline">更新于: {new Date(aiResult.timestamp).toLocaleTimeString()}</span>}
+                        <button onClick={handleAnalyze} disabled={isAnalyzing} className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors disabled:opacity-50"><RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} /></button>
+                        <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">{isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</button>
                     </div>
                 </div>
-                
                 <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     {aiResult ? (
                         <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                             {/* 1. Overall & Workload */}
                              <div className="space-y-4">
-                                 <div>
-                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
-                                     <p className="text-slate-700 dark:text-slate-200 leading-relaxed bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                                         {aiResult.overview}
-                                     </p>
-                                 </div>
-                                 {aiResult.workload && (
-                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4>
-                                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                                            {aiResult.workload}
-                                        </p>
-                                     </div>
-                                 )}
+                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">{aiResult.overview}</p></div>
+                                 {aiResult.workload && <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiResult.workload}</p></div>}
                              </div>
-
-                             {/* 2. Blockers & Rhythm */}
                              <div className="space-y-4">
                                  <div>
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻类型</h4>
                                      {aiResult.blockerTypes.length > 0 ? (
-                                         <div className="flex flex-col gap-2">
-                                             {aiResult.blockerTypes.map((b, i) => (
-                                                 <div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30">
-                                                     <span className="text-amber-800 dark:text-amber-200 font-medium">{b.tag}</span>
-                                                     <span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span>
-                                                 </div>
-                                             ))}
-                                         </div>
-                                     ) : (
-                                         <div className="text-slate-400 italic text-xs">暂无明显受阻归类</div>
-                                     )}
+                                         <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium">{b.tag}</span><span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span></div>))}</div>
+                                     ) : (<div className="text-slate-400 italic text-xs">暂无明显受阻归类</div>)}
                                  </div>
-                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4>
-                                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
-                                        {aiResult.updateRhythm}
-                                    </p>
-                                 </div>
+                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">{aiResult.updateRhythm}</p></div>
                              </div>
-
-                             <div className="md:col-span-2 text-center pt-2 border-t border-indigo-50 dark:border-indigo-900/30">
-                                 <span className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">
-                                     ✨ AI 辅助分析，仅用于工作态势参考
-                                 </span>
-                             </div>
+                             <div className="md:col-span-2 text-center pt-2 border-t border-indigo-50 dark:border-indigo-900/30"><span className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">✨ AI 辅助分析，仅用于工作态势参考</span></div>
                         </div>
-                    ) : (
-                        <div className="p-8 text-center text-slate-400 text-sm">
-                            <div className="mb-2">点击刷新按钮生成当前工作态势分析</div>
-                            <div className="text-xs opacity-60">AI 将归纳所有事项状态，辅助您快速看清全局。</div>
-                        </div>
-                    )}
+                    ) : (<div className="p-8 text-center text-slate-400 text-sm"><div className="mb-2">点击刷新按钮生成当前工作态势分析</div><div className="text-xs opacity-60">AI 将归纳所有事项状态，辅助您快速看清全局。</div></div>)}
                 </div>
             </div>
 
-            {/* 
-                STATS AREA 
-            */}
+            {/* Stats */}
             <div className="mb-8 mt-4">
-                 {/* Row 1: Primary Stats (Expanded by Type, Auto Height) */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-start">
-                     <DetailedStatCard 
-                        label="正在推进"
-                        matters={inProgressMatters}
-                        count={statInProgressMatters}
-                        icon={Activity}
-                        color="bg-blue-500"
-                     />
-                     <DetailedStatCard 
-                        label="急需关注"
-                        matters={attentionGroups.map(g => g.matter)}
-                        count={statUrgentMatters}
-                        icon={AlertCircle}
-                        color="bg-amber-500"
-                     />
+                     <DetailedStatCard label="正在推进" matters={inProgressMatters} count={statInProgressMatters} icon={Activity} color="bg-blue-500" />
+                     <DetailedStatCard label="急需关注" matters={attentionGroups.map(g => g.matter)} count={statUrgentMatters} icon={AlertCircle} color="bg-amber-500" />
                  </div>
-
-                 {/* Row 2: Secondary Stats (Weakened / Expandable) */}
                  <div className="flex flex-col gap-2">
-                     {/* Completed Expandable */}
                      <div className="bg-transparent">
-                         <button 
-                            onClick={() => setShowCompleted(!showCompleted)}
-                            className={`
-                                flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm
-                                ${showCompleted 
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-sm' 
-                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}
-                            `}
-                         >
-                            <div className="flex items-center gap-2">
-                                <div className={`p-1 rounded-full ${showCompleted ? 'bg-emerald-200 dark:bg-emerald-800' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                                    <CheckSquare size={14} className={showCompleted ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'} />
-                                </div>
-                                <span className="font-medium">已完成事项</span>
-                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statCompletedMatters}</span>
-                            </div>
+                         <button onClick={() => setShowCompleted(!showCompleted)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showCompleted ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
+                            <div className="flex items-center gap-2"><div className={`p-1 rounded-full ${showCompleted ? 'bg-emerald-200 dark:bg-emerald-800' : 'bg-slate-100 dark:bg-slate-700'}`}><CheckSquare size={14} className={showCompleted ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'} /></div><span className="font-medium">已完成事项</span><span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statCompletedMatters}</span></div>
                             {showCompleted ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                          </button>
-                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showCompleted ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                              {renderMiniList(completedActiveMatters, 'completed')}
-                         </div>
+                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showCompleted ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>{renderMiniList(completedActiveMatters, 'completed')}</div>
                      </div>
-
-                     {/* Archived Expandable */}
                      <div className="bg-transparent">
-                         <button 
-                            onClick={() => setShowArchived(!showArchived)}
-                            className={`
-                                flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm
-                                ${showArchived 
-                                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 shadow-sm' 
-                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}
-                            `}
-                         >
-                            <div className="flex items-center gap-2">
-                                <div className={`p-1 rounded-full ${showArchived ? 'bg-slate-300 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                                    <Archive size={14} className={showArchived ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} />
-                                </div>
-                                <span className="font-medium">已归档事项</span>
-                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statArchivedMatters}</span>
-                            </div>
+                         <button onClick={() => setShowArchived(!showArchived)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showArchived ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
+                            <div className="flex items-center gap-2"><div className={`p-1 rounded-full ${showArchived ? 'bg-slate-300 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-700'}`}><Archive size={14} className={showArchived ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} /></div><span className="font-medium">已归档事项</span><span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statArchivedMatters}</span></div>
                             {showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                          </button>
-                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showArchived ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                              {renderMiniList(archivedMatters, 'archived')}
-                         </div>
+                         <div className={`overflow-hidden transition-all duration-300 ease-out ${showArchived ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>{renderMiniList(archivedMatters, 'archived')}</div>
                      </div>
                  </div>
             </div>
 
             <div className="space-y-12">
-                {/* Section 1: Attention Needed */}
                 <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
-                        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">急需关注</h2>
-                        <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span>
-                    </div>
-                    {attentionGroups.length === 0 ? (
-                        <div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                           <CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-                        {attentionGroups.map((group, idx) => (
-                            <AttentionGroupCard 
-                                key={group.matter.id} 
-                                group={group}
-                                onSelectMatter={onSelectMatter}
-                                onJumpToTask={onJumpToTask}
-                                onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)}
-                            />
-                        ))}
-                        </div>
-                    )}
+                    <div className="flex items-center gap-2 mb-4"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">急需关注</h2><span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span></div>
+                    {attentionGroups.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2"><CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{attentionGroups.map((group, idx) => (<AttentionGroupCard key={group.matter.id} group={group} onSelectMatter={onSelectMatter} onJumpToTask={onJumpToTask} onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)}/>))}</div>)}
                 </section>
-
-                {/* Section 2: In Progress */}
                 <section>
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">正在推进</h2>
-                    <span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span>
-                </div>
-                {inProgressMatters.length === 0 ? (
-                    <div className="text-sm text-slate-400 pl-4 py-8 text-center bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                    暂无常规推进中的事项。
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-                    {inProgressMatters.map(m => (
-                        <MatterCard 
-                        key={m.id} 
-                        m={m} 
-                        type="normal" 
-                        onSelectMatter={onSelectMatter}
-                        onDeleteMatter={onDeleteMatter}
-                        hasAttention={attentionGroups.some(ag => ag.matter.id === m.id)}
-                        />
-                    ))}
-                    </div>
-                )}
+                <div className="flex items-center gap-2 mb-4"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">正在推进</h2><span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span></div>
+                {inProgressMatters.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-8 text-center bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">暂无常规推进中的事项。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{inProgressMatters.map(m => (<MatterCard key={m.id} m={m} type="normal" onSelectMatter={onSelectMatter} onDeleteMatter={onDeleteMatter} hasAttention={attentionGroups.some(ag => ag.matter.id === m.id)}/>))}</div>)}
                 </section>
             </div>
-        </div>
       </div>
     </div>
   );
