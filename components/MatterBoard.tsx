@@ -332,11 +332,6 @@ const MatterBoard: React.FC<Props> = ({
 
       // Calculate percentage
       const windowHeight = window.innerHeight;
-      // The header is roughly 64px.
-      // The content area height = windowHeight - 64.
-      // Top position is around 64px.
-      // But simplifying: just take clientY as a percentage of windowHeight.
-      // Inverted because we are setting Bottom Panel Height.
       const newBottomPercent = 100 - (clientY / windowHeight * 100);
       
       // Limit range (min 20%, max 80%)
@@ -390,21 +385,70 @@ const MatterBoard: React.FC<Props> = ({
 
   const renderMobileStageSelector = () => (
       <div className="flex overflow-x-auto gap-2 p-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 scrollbar-hide md:hidden shrink-0">
-          {matter.stages.map((stage, idx) => (
-              <button
-                  key={stage.id}
-                  onClick={() => setSelectedStageId(stage.id)}
-                  className={`
-                      whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors border
-                      ${selectedStageId === stage.id 
-                          ? 'bg-blue-600 text-white border-blue-600' 
-                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}
-                  `}
-              >
-                  {idx + 1}. {stage.title}
-              </button>
-          ))}
-          <button onClick={() => setIsAddingStage(true)} className="px-2 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500"><Plus size={14}/></button>
+          {matter.stages.map((stage, idx) => {
+              const isSelected = selectedStageId === stage.id;
+              const isEditing = editingStageId === stage.id;
+
+              if (isEditing) {
+                  return (
+                      <input 
+                          key={stage.id}
+                          autoFocus
+                          value={editingStageName}
+                          onChange={(e) => setEditingStageName(e.target.value)}
+                          onBlur={saveStageName}
+                          onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium border border-blue-600 bg-white text-slate-800 outline-none min-w-[100px]"
+                      />
+                  );
+              }
+
+              return (
+                  <button
+                      key={stage.id}
+                      onClick={() => setSelectedStageId(stage.id)}
+                      className={`
+                          whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors border flex items-center gap-1.5
+                          ${isSelected 
+                              ? 'bg-blue-600 text-white border-blue-600' 
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}
+                      `}
+                  >
+                      {idx + 1}. {stage.title}
+                      {isSelected && (
+                          <span 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                startEditingStage(stage);
+                            }}
+                            className="bg-blue-500 rounded-full p-0.5 hover:bg-blue-400"
+                          >
+                             <Edit2 size={10} />
+                          </span>
+                      )}
+                  </button>
+              );
+          })}
+          
+          {isAddingStage ? (
+             <input 
+                autoFocus
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                onBlur={() => {
+                    if (newStageName.trim()) confirmAddStage();
+                    else setIsAddingStage(false);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmAddStage();
+                    if (e.key === 'Escape') setIsAddingStage(false);
+                }}
+                placeholder="新阶段名称"
+                className="px-3 py-1.5 rounded-full text-xs font-medium border border-blue-400 bg-white outline-none min-w-[100px]"
+             />
+          ) : (
+             <button onClick={() => setIsAddingStage(true)} className="px-2 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500"><Plus size={14}/></button>
+          )}
       </div>
   );
 
@@ -668,6 +712,11 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
 
                 {/* BOTTOM HALF: Judgment Timeline (Dynamic Height) */}
+                {/* Fix: removed solid bg here so content can flow if needed, but inner has bg. 
+                    Actually inner JudgmentTimeline has bg. 
+                    We ensure this container doesn't block background.
+                    We extend this to bottom of screen.
+                */}
                 <div 
                     className="flex flex-col bg-white dark:bg-slate-900 z-10 relative" 
                     style={{ height: `${bottomPanelHeightPercent}%` }}
@@ -679,7 +728,7 @@ const MatterBoard: React.FC<Props> = ({
 
                 {/* TASK DETAIL OVERLAY (Full Screen) */}
                 {selectedTaskId && activeTask && (
-                    <div className="absolute inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp">
+                    <div className="absolute inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-slideUp w-full max-w-[100vw] overflow-x-hidden">
                         {/* Custom Header for Detail View */}
                         <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur shrink-0">
                             <button onClick={() => setSelectedTaskId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">

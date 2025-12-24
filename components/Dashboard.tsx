@@ -4,7 +4,7 @@ import {
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
   Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff,
-  BrainCircuit, RefreshCw, Sparkles
+  BrainCircuit, RefreshCw, Sparkles, Settings
 } from 'lucide-react';
 import { analyzeWorkStatus } from '../services/aiAnalysisService';
 
@@ -453,7 +453,7 @@ const Dashboard: React.FC<Props> = ({
              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
              title="设置与备份"
           >
-             <Database size={16} />
+             <Settings size={16} />
           </button>
 
           <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>

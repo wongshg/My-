@@ -168,8 +168,10 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
           2. Main Scrollable Container
           Contains: AI Panel, Input, and Timeline List
           This ensures vertical scrolling works smoothly across all elements.
+          pb-[env(safe-area-inset-bottom)] ensures content is not hidden behind home indicator,
+          while the background (bg-slate-50/50) extends fully.
       */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6 pb-[env(safe-area-inset-bottom)]">
          
          {/* A. AI Panel (If exists) */}
          {(matter.latestAnalysis || isAnalyzing) && (
