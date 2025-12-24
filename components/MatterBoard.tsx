@@ -50,9 +50,6 @@ const MatterBoard: React.FC<Props> = ({
   const [editTitleVal, setEditTitleVal] = useState(matter.title);
   const [editDescVal, setEditDescVal] = useState(matter.type);
 
-  // AI State
-  // Removed old AI Analysis state as requested
-
   // Export State
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -405,8 +402,9 @@ const MatterBoard: React.FC<Props> = ({
 
   return (
     // Updated: Use min-h-[100dvh] to ensure background covers all overscroll areas.
+    // ADDED: overflow-x-hidden to prevent wobble
     <div 
-        className="min-h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden relative"
+        className="min-h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden overflow-x-hidden relative"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -484,7 +482,7 @@ const MatterBoard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
-             {/* Theme Toggle (Board) */}
+             {/* Theme Toggle (Board) - UPDATED: Visible on mobile now to match dashboard */}
              <button 
                 onClick={() => {
                     if(onThemeChange) {
@@ -493,7 +491,7 @@ const MatterBoard: React.FC<Props> = ({
                         else onThemeChange('system');
                     }
                 }}
-                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors hidden md:block"
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
              >
                 {getThemeIcon()}
             </button>

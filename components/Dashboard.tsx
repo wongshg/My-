@@ -445,7 +445,7 @@ const Dashboard: React.FC<Props> = ({
              {getThemeIcon()}
           </button>
 
-          <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+          {/* Divider removed as requested */}
 
           {/* Settings Button - Unified Style */}
           <button
@@ -472,12 +472,8 @@ const Dashboard: React.FC<Props> = ({
           </button>
         </div>
       </header>
-
-      {/* 
-          Content Area - Absolute inset-0 with overflow-y-auto 
-          This creates the scrollable area that fills the screen (including behind header).
-          pt-20 ensures content starts below header initially.
-      */}
+      
+      {/* ... Content ... */}
       <div className="absolute inset-0 overflow-y-auto pt-20 pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-7xl mx-auto p-6 min-h-full">
             

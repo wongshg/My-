@@ -55,6 +55,19 @@ export interface JudgmentRecord {
   timestamp: number;
 }
 
+// AI Analysis Result Structure for Judgment Timeline
+export interface AIAnalysisResult {
+  summary: string;       // 1. 当前判断摘要
+  evolution: string;     // 2. 判断演变概览
+  blockerTags: string[]; // 3. 高频卡点归纳
+  similarCases: {        // 4. 相似事项对照
+    matterName: string;
+    similarity: string;
+    facts: string;
+  }[];
+  timestamp?: number;    // Added timestamp for when analysis was generated
+}
+
 export interface Matter {
   id: string;
   title: string;
@@ -70,6 +83,9 @@ export interface Matter {
   judgmentTimeline: JudgmentRecord[];
   currentSituation?: string; // Derived from the latest judgment record
   overallStatus?: TaskStatus; // Derived from the latest judgment record
+  
+  // Persisted AI Analysis
+  latestAnalysis?: AIAnalysisResult;
 }
 
 export interface Template {
@@ -77,18 +93,6 @@ export interface Template {
   name: string;
   description: string;
   stages: Stage[];
-}
-
-// AI Analysis Result Structure for Judgment Timeline
-export interface AIAnalysisResult {
-  summary: string;       // 1. 当前判断摘要
-  evolution: string;     // 2. 判断演变概览
-  blockerTags: string[]; // 3. 高频卡点归纳
-  similarCases: {        // 4. 相似事项对照
-    matterName: string;
-    similarity: string;
-    facts: string;
-  }[];
 }
 
 // AI Work Status Overview Result Structure
