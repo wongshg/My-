@@ -12,10 +12,8 @@ interface Props {
 const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => {
   const [content, setContent] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<TaskStatus | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
+  
   // AI State
-  // Read analysis from the matter itself for persistence
   const [isAiPanelExpanded, setIsAiPanelExpanded] = useState(true); 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -27,7 +25,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       }
   }, [matter.latestAnalysis?.timestamp]);
 
-  // Status config for selection
   const statusOptions = [
     { value: TaskStatus.IN_PROGRESS, label: '正常推进', icon: PlayCircle, color: 'text-blue-600 bg-blue-50 border-blue-200' },
     { value: TaskStatus.BLOCKED, label: '受阻/等待', icon: PauseCircle, color: 'text-amber-600 bg-amber-50 border-amber-200' },
@@ -78,7 +75,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
     if (result) {
         const resultWithId = { ...result, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
         
-        // Update history
         const newHistory = [resultWithId, ...(matter.analysisHistory || [])];
         
         onUpdate({ 
@@ -147,15 +143,15 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   return (
     <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50 relative">
       
-      {/* Header */}
-      <div className="p-4 md:p-6 pb-2 shrink-0 flex items-center justify-between">
+      {/* 
+          1. Header (Fixed) 
+      */}
+      <div className="p-4 md:p-6 pb-2 shrink-0 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur z-10">
         <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <GitCommit className="text-blue-600 dark:text-blue-400" />
             判断时间线
         </h2>
         
-        {/* Only show "Run AI" button here if NO analysis exists. 
-            If exists, refresh is inside the panel. */}
         {!matter.latestAnalysis && (
             <button 
                 onClick={handleRunAnalysis}
@@ -169,14 +165,17 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       </div>
 
       {/* 
-          AI Analysis Panel (Collapsible, Persistent) 
+          2. Main Scrollable Container
+          Contains: AI Panel, Input, and Timeline List
+          This ensures vertical scrolling works smoothly across all elements.
       */}
-      <div className="px-4 md:px-6 mb-4 shrink-0">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6">
+         
+         {/* A. AI Panel (If exists) */}
          {(matter.latestAnalysis || isAnalyzing) && (
              <div className="bg-white dark:bg-slate-800 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm overflow-hidden transition-all">
-                 {/* Panel Header - Always Visible */}
                  <div 
-                    className="bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2 flex items-center justify-between cursor-pointer border-b border-indigo-100 dark:border-indigo-900/50"
+                    className="bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2 flex items-center justify-between cursor-pointer border-b border-indigo-100 dark:border-indigo-900/50 sticky top-0 z-10"
                     onClick={() => setIsAiPanelExpanded(!isAiPanelExpanded)}
                  >
                      <div className="flex items-center gap-2">
@@ -189,7 +188,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                          )}
                      </div>
                      <div className="flex items-center gap-2">
-                         {/* History Toggle */}
                          {matter.analysisHistory && matter.analysisHistory.length > 1 && (
                              <button 
                                 onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }}
@@ -198,7 +196,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                                 {showHistory ? '返回最新' : '历史记录'}
                              </button>
                          )}
-                         {/* Refresh Button inside Panel */}
                          <button 
                             onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }}
                             disabled={isAnalyzing}
@@ -213,9 +210,8 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                      </div>
                  </div>
 
-                 {/* Panel Content - Collapsible */}
-                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isAiPanelExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                     <div className="p-4 overflow-y-auto max-h-[600px]">
+                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isAiPanelExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                     <div className="p-4">
                          {isAnalyzing ? (
                              <div className="py-6 flex flex-col items-center justify-center text-slate-400 gap-2">
                                  <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
@@ -238,96 +234,91 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                  </div>
              </div>
          )}
-      </div>
 
-      {/* Input Area */}
-      <div className="px-4 md:px-6 shrink-0">
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 md:p-4 transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="记录当前推进情况、卡点或决策..."
-            className="w-full text-sm bg-transparent border-none outline-none resize-none placeholder-slate-400 text-slate-700 dark:text-slate-200 min-h-[60px]"
-            onKeyDown={(e) => { if(e.ctrlKey && e.key === 'Enter') handleSubmit(); }}
-          />
-          
-          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-            {/* Status Selector */}
-            <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-              {statusOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSelectedStatus(selectedStatus === opt.value ? null : opt.value)}
-                  className={`
-                    shrink-0 p-1.5 rounded-full transition-all border
-                    ${selectedStatus === opt.value 
-                      ? opt.color + ' ring-1 ring-offset-1 dark:ring-offset-slate-800' 
-                      : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}
-                  `}
-                  title={opt.label}
+         {/* B. Input Area */}
+         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 md:p-4 transition-all focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30">
+            <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="记录当前推进情况、卡点或决策..."
+                className="w-full text-sm bg-transparent border-none outline-none resize-none placeholder-slate-400 text-slate-700 dark:text-slate-200 min-h-[60px]"
+                onKeyDown={(e) => { if(e.ctrlKey && e.key === 'Enter') handleSubmit(); }}
+            />
+            
+            <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+                {statusOptions.map(opt => (
+                    <button
+                    key={opt.value}
+                    onClick={() => setSelectedStatus(selectedStatus === opt.value ? null : opt.value)}
+                    className={`
+                        shrink-0 p-1.5 rounded-full transition-all border
+                        ${selectedStatus === opt.value 
+                        ? opt.color + ' ring-1 ring-offset-1 dark:ring-offset-slate-800' 
+                        : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}
+                    `}
+                    title={opt.label}
+                    >
+                    <opt.icon size={16} />
+                    </button>
+                ))}
+                </div>
+
+                <button 
+                onClick={handleSubmit}
+                disabled={!content.trim()}
+                className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
-                  <opt.icon size={16} />
+                <Send size={12} /> 提交
                 </button>
-              ))}
             </div>
+         </div>
 
-            <button 
-              onClick={handleSubmit}
-              disabled={!content.trim()}
-              className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              <Send size={12} /> 提交
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline List */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 relative" ref={scrollRef}>
-        {!matter.judgmentTimeline || matter.judgmentTimeline.length === 0 ? (
-          <div className="text-center py-8 opacity-50">
-             <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2">
-                <GitCommit size={20} className="text-slate-400" />
-             </div>
-             <p className="text-xs text-slate-400">暂无记录，添加一条以开始。</p>
-          </div>
-        ) : (
-          <div className="space-y-0 pl-3 border-l-2 border-slate-200 dark:border-slate-700 ml-2 py-1">
-            {matter.judgmentTimeline.map((record, index) => (
-              <div key={record.id} className="relative pl-5 pb-6 last:pb-0 group">
-                {/* Timeline Node */}
-                <div className={`
-                    absolute left-[-7px] top-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 shadow-sm
-                    ${index === 0 ? 'bg-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}
-                `}></div>
-                
-                {/* Content Card */}
-                <div className={`
-                    rounded-lg border p-3 transition-all
-                    ${index === 0 
-                        ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-800 shadow-sm' 
-                        : 'bg-white/60 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700 grayscale hover:grayscale-0'}
-                `}>
-                    <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                            {getStatusBadge(record.status)}
-                            {index === 0 && (
-                                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 rounded">Current</span>
-                            )}
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                            {formatDate(record.timestamp)}
-                        </span>
-                    </div>
+         {/* C. Timeline List */}
+         <div>
+            {!matter.judgmentTimeline || matter.judgmentTimeline.length === 0 ? (
+            <div className="text-center py-8 opacity-50">
+                <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <GitCommit size={20} className="text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">暂无记录，添加一条以开始。</p>
+            </div>
+            ) : (
+            <div className="space-y-0 pl-3 border-l-2 border-slate-200 dark:border-slate-700 ml-2 py-1">
+                {matter.judgmentTimeline.map((record, index) => (
+                <div key={record.id} className="relative pl-5 pb-6 last:pb-0 group">
+                    <div className={`
+                        absolute left-[-7px] top-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 shadow-sm
+                        ${index === 0 ? 'bg-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}
+                    `}></div>
                     
-                    <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                        {record.content}
+                    <div className={`
+                        rounded-lg border p-3 transition-all
+                        ${index === 0 
+                            ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-800 shadow-sm' 
+                            : 'bg-white/60 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700 grayscale hover:grayscale-0'}
+                    `}>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                                {getStatusBadge(record.status)}
+                                {index === 0 && (
+                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 rounded">Current</span>
+                                )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                                {formatDate(record.timestamp)}
+                            </span>
+                        </div>
+                        
+                        <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                            {record.content}
+                        </div>
                     </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+                ))}
+            </div>
+            )}
+         </div>
       </div>
     </div>
   );

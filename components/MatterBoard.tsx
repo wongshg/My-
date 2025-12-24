@@ -6,7 +6,7 @@ import JudgmentTimeline from './JudgmentTimeline';
 import { 
   Plus, ArrowLeft, Edit2, Archive, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
-  Moon, Sun, Monitor, FileText, Package, LayoutDashboard, SunMoon, MoreHorizontal
+  Moon, Sun, Monitor, FileText, Package, LayoutDashboard, SunMoon, MoreHorizontal, GripHorizontal
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -45,8 +45,6 @@ const MatterBoard: React.FC<Props> = ({
   // Mobile View Logic: 
   // If selectedTaskId is set, we show Task Detail (Overlay).
   // If not, we show Split View (Top: Tasks, Bottom: Timeline).
-  // 'mobileView' state is technically redundant if we derive from selectedTaskId, 
-  // but we keep it for explicitly controlling "Back" behavior if needed.
   
   // Title & Description Editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -69,6 +67,11 @@ const MatterBoard: React.FC<Props> = ({
   // Edit Task Name State
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
+
+  // Mobile Resizable Split View State
+  const [bottomPanelHeightPercent, setBottomPanelHeightPercent] = useState(45); // Default 45%
+  const resizeRef = useRef<HTMLDivElement>(null);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Handle Deep Linking
   useEffect(() => {
@@ -211,6 +214,22 @@ const MatterBoard: React.FC<Props> = ({
       onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
   };
 
+  const startEditingStage = (stage: Stage) => {
+    setEditingStageId(stage.id);
+    setEditingStageName(stage.title);
+  };
+
+  const saveStageName = () => {
+    if (editingStageId && editingStageName.trim()) {
+      const newStages = matter.stages.map(s => 
+        s.id === editingStageId ? { ...s, title: editingStageName.trim() } : s
+      );
+      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    }
+    setEditingStageId(null);
+    setEditingStageName('');
+  };
+
   const updateStageDate = (stageId: string, dateStr: string) => {
       if (dateStr && !validateDateAgainstMatter(dateStr)) return;
       const ts = dateStr ? new Date(dateStr).getTime() : undefined;
@@ -218,6 +237,7 @@ const MatterBoard: React.FC<Props> = ({
       onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
   };
 
+  // --- Task CRUD ---
   const addTask = () => {
     if (!selectedStageId) return;
     const newTask: Task = {
@@ -253,6 +273,28 @@ const MatterBoard: React.FC<Props> = ({
       if (selectedTaskId === taskId) setSelectedTaskId(null);
   };
 
+  const startEditingTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditingTaskName(task.title);
+  };
+
+  const saveTaskName = () => {
+    if (editingTaskId && editingTaskName.trim() && selectedStageId) {
+        const newStages = matter.stages.map(s => {
+            if (s.id === selectedStageId) {
+                return {
+                    ...s,
+                    tasks: s.tasks.map(t => t.id === editingTaskId ? { ...t, title: editingTaskName.trim() } : t)
+                }
+            }
+            return s;
+        });
+        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    }
+    setEditingTaskId(null);
+    setEditingTaskName('');
+  };
+
   const handleTaskUpdate = (updatedTask: Task) => {
     if (!selectedStageId) return;
     let dismissedIds = matter.dismissedAttentionIds || [];
@@ -271,6 +313,65 @@ const MatterBoard: React.FC<Props> = ({
     onUpdate({ ...matter, stages: newStages, dismissedAttentionIds: dismissedIds, lastUpdated: Date.now() });
   };
 
+  // --- Mobile Resize Logic ---
+  const handleResizeStart = (e: React.TouchEvent | React.MouseEvent) => {
+      setIsResizing(true);
+      // Disable text selection during resize
+      document.body.style.userSelect = 'none';
+  };
+
+  const handleResizeMove = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!isResizing) return;
+      
+      let clientY;
+      if ('touches' in e) {
+          clientY = e.touches[0].clientY;
+      } else {
+          clientY = e.clientY;
+      }
+
+      // Calculate percentage
+      const windowHeight = window.innerHeight;
+      // The header is roughly 64px.
+      // The content area height = windowHeight - 64.
+      // Top position is around 64px.
+      // But simplifying: just take clientY as a percentage of windowHeight.
+      // Inverted because we are setting Bottom Panel Height.
+      const newBottomPercent = 100 - (clientY / windowHeight * 100);
+      
+      // Limit range (min 20%, max 80%)
+      if (newBottomPercent > 20 && newBottomPercent < 80) {
+          setBottomPanelHeightPercent(newBottomPercent);
+      }
+  };
+
+  const handleResizeEnd = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = '';
+  };
+
+  // Add global listeners for mouse move/up to handle resize cleanly
+  useEffect(() => {
+      if (isResizing) {
+          window.addEventListener('mousemove', handleResizeMove as any);
+          window.addEventListener('mouseup', handleResizeEnd);
+          window.addEventListener('touchmove', handleResizeMove as any);
+          window.addEventListener('touchend', handleResizeEnd);
+      } else {
+          window.removeEventListener('mousemove', handleResizeMove as any);
+          window.removeEventListener('mouseup', handleResizeEnd);
+          window.removeEventListener('touchmove', handleResizeMove as any);
+          window.removeEventListener('touchend', handleResizeEnd);
+      }
+      return () => {
+          window.removeEventListener('mousemove', handleResizeMove as any);
+          window.removeEventListener('mouseup', handleResizeEnd);
+          window.removeEventListener('touchmove', handleResizeMove as any);
+          window.removeEventListener('touchend', handleResizeEnd);
+      }
+  }, [isResizing]);
+
+
   // Format date helper
   const formatDate = (ts?: number) => {
       if (!ts) return '';
@@ -287,7 +388,6 @@ const MatterBoard: React.FC<Props> = ({
 
   // --- Rendering Helpers ---
 
-  // Mobile Horizontal Stage Selector
   const renderMobileStageSelector = () => (
       <div className="flex overflow-x-auto gap-2 p-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 scrollbar-hide md:hidden shrink-0">
           {matter.stages.map((stage, idx) => (
@@ -311,7 +411,7 @@ const MatterBoard: React.FC<Props> = ({
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden relative">
         
-        {/* Header (Absolute) */}
+        {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
@@ -351,12 +451,31 @@ const MatterBoard: React.FC<Props> = ({
              <button onClick={() => onThemeChange && onThemeChange(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
                 {getThemeIcon()}
             </button>
+            
+            {/* Archive Button Restored */}
+            {!isTemplateMode && (
+                <>
+                    <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+                    <button 
+                        onClick={() => {
+                        const isArchived = !matter.archived;
+                        onUpdate({...matter, archived: isArchived});
+                        if(isArchived) onBack();
+                        }}
+                        className={`p-1.5 rounded-md transition-colors hidden md:block ${matter.archived ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        title={matter.archived ? "已归档" : "归档"}
+                    >
+                        <Archive size={18} />
+                    </button>
+                </>
+            )}
+
             {!isTemplateMode && (
                 <div className="hidden md:block">
                     <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-md">
                         <Download size={14} /> 下载
                     </button>
-                    {showExportMenu && (/* ... Export Menu same as before ... */
+                    {showExportMenu && (
                         <div className="absolute right-4 top-14 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 z-50">
                              <button onClick={() => exportMaterials('ALL')} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700">全部下载</button>
                         </div>
@@ -374,9 +493,6 @@ const MatterBoard: React.FC<Props> = ({
             
             {/* 
                 DESKTOP LAYOUT (md:flex) 
-                - Column 1: Stages
-                - Column 2: Tasks
-                - Column 3: Details/Timeline
             */}
             <div className="hidden md:flex w-full h-full">
                 {/* Col 1: Stages */}
@@ -386,11 +502,54 @@ const MatterBoard: React.FC<Props> = ({
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
                     </div>
                     <div className="px-2 space-y-1">
-                        {matter.stages.map((stage, idx) => (
-                            <div key={stage.id} onClick={() => { setSelectedStageId(stage.id); setSelectedTaskId(null); }} className={`p-2.5 rounded cursor-pointer text-sm font-medium ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                                {idx + 1}. {stage.title}
+                        {matter.stages.map((stage, idx) => {
+                            const isEditing = editingStageId === stage.id;
+                            return (
+                                <div 
+                                    key={stage.id} 
+                                    onClick={() => { setSelectedStageId(stage.id); setSelectedTaskId(null); }} 
+                                    className={`group p-2.5 rounded cursor-pointer text-sm font-medium relative flex items-center justify-between
+                                        ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                                >
+                                    <div className="flex-1 min-w-0 truncate flex items-center gap-2">
+                                        <span className="opacity-50 text-xs">{idx + 1}.</span>
+                                        {isEditing ? (
+                                            <input 
+                                                autoFocus
+                                                className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100"
+                                                value={editingStageName}
+                                                onChange={(e) => setEditingStageName(e.target.value)}
+                                                onBlur={saveStageName}
+                                                onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span onDoubleClick={(e) => { e.stopPropagation(); startEditingStage(stage); }}>{stage.title}</span>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Stage Hover Actions */}
+                                    {!isEditing && (
+                                        <div className="hidden group-hover:flex items-center gap-1">
+                                            <button onClick={(e) => { e.stopPropagation(); startEditingStage(stage); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); deleteStage(stage.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                        {isAddingStage && (
+                            <div className="p-2">
+                                <input 
+                                    ref={newStageInputRef}
+                                    className="w-full bg-white dark:bg-slate-800 border border-blue-400 rounded px-2 py-1 text-sm outline-none"
+                                    placeholder="输入阶段名称"
+                                    value={newStageName}
+                                    onChange={(e) => setNewStageName(e.target.value)}
+                                    onKeyDown={(e) => { if(e.key === 'Enter') confirmAddStage(); if(e.key === 'Escape') setIsAddingStage(false); }}
+                                />
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
 
@@ -401,12 +560,43 @@ const MatterBoard: React.FC<Props> = ({
                         <button onClick={addTask} disabled={!selectedStageId} className="text-xs bg-slate-900 text-white px-2 py-1 rounded"><Plus size={12}/></button>
                     </div>
                     <div>
-                        {activeStage?.tasks.map((task, idx) => (
-                            <div key={task.id} onClick={() => setSelectedTaskId(task.id)} className={`p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}`}>
-                                <div className="flex justify-between mb-1"><StatusBadge status={task.status} /></div>
-                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{task.title}</div>
-                            </div>
-                        ))}
+                        {activeStage?.tasks.map((task, idx) => {
+                            const isEditing = editingTaskId === task.id;
+                            return (
+                                <div 
+                                    key={task.id} 
+                                    onClick={() => setSelectedTaskId(task.id)} 
+                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative
+                                        ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}`}
+                                >
+                                    <div className="flex justify-between mb-1"><StatusBadge status={task.status} /></div>
+                                    
+                                    {isEditing ? (
+                                        <input
+                                            autoFocus
+                                            className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100 text-sm font-medium"
+                                            value={editingTaskName}
+                                            onChange={(e) => setEditingTaskName(e.target.value)}
+                                            onBlur={saveTaskName}
+                                            onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <div className="text-sm font-medium text-slate-800 dark:text-slate-200 pr-6" onDoubleClick={(e) => { e.stopPropagation(); startEditingTask(task); }}>
+                                            {task.title}
+                                        </div>
+                                    )}
+
+                                    {/* Task Hover Actions */}
+                                    {!isEditing && (
+                                        <div className="absolute top-2 right-2 hidden group-hover:flex flex-col gap-1 bg-white/50 dark:bg-slate-800/50 rounded">
+                                            <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 text-slate-400 hover:text-blue-500"><Edit2 size={12}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -427,12 +617,12 @@ const MatterBoard: React.FC<Props> = ({
             {/* 
                 MOBILE LAYOUT (md:hidden)
                 - Vertical Split: Top = Tasks, Bottom = Timeline
-                - Overlay: Task Detail
+                - Resizable
             */}
             <div className="md:hidden w-full h-full flex flex-col">
                 
-                {/* TOP HALF: Stages + Tasks (Flex 1) */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+                {/* TOP HALF: Stages + Tasks (Dynamic Height) */}
+                <div className="flex flex-col min-h-0 overflow-hidden relative" style={{ height: `${100 - bottomPanelHeightPercent}%` }}>
                     {renderMobileStageSelector()}
                     
                     {/* Task List Header */}
@@ -467,14 +657,22 @@ const MatterBoard: React.FC<Props> = ({
                     </div>
                 </div>
 
-                {/* BOTTOM HALF: Judgment Timeline (Fixed Height or Flex?) 
-                    User requested: "Lower half Judgment Timeline" 
-                    Let's give it about 40-45% of screen height.
-                */}
-                <div className="h-[45%] border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.05)] z-10 relative">
-                    <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-slate-200 dark:bg-slate-700 w-10 h-1.5 rounded-full"></div>
+                {/* RESIZE HANDLE */}
+                <div 
+                    ref={resizeRef}
+                    className="h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shrink-0 z-20 shadow-sm"
+                    onMouseDown={handleResizeStart}
+                    onTouchStart={handleResizeStart}
+                >
+                    <GripHorizontal size={16} className="text-slate-400" />
+                </div>
+
+                {/* BOTTOM HALF: Judgment Timeline (Dynamic Height) */}
+                <div 
+                    className="flex flex-col bg-white dark:bg-slate-900 z-10 relative" 
+                    style={{ height: `${bottomPanelHeightPercent}%` }}
+                >
                     <div className="flex-1 overflow-hidden">
-                        {/* We reuse JudgmentTimeline but it needs to be scrollable internally */}
                         <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
                     </div>
                 </div>
