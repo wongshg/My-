@@ -6,7 +6,7 @@ import JudgmentTimeline from './JudgmentTimeline';
 import { 
   Plus, ArrowLeft, Edit2, Archive, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
-  Moon, Sun, Monitor, FileText, Package
+  Moon, Sun, Monitor, FileText, Package, LayoutDashboard, SunMoon
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -393,7 +393,7 @@ const MatterBoard: React.FC<Props> = ({
     switch(theme) {
       case 'dark': return <Moon size={16} />;
       case 'light': return <Sun size={16} />;
-      default: return <Monitor size={16} />;
+      default: return <SunMoon size={16} />;
     }
   };
 
@@ -482,7 +482,7 @@ const MatterBoard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
-             {/* Theme Toggle (Board) - UPDATED: Visible on mobile now to match dashboard */}
+             {/* Theme Toggle (Board) - FIXED: Unified Style with Dashboard */}
              <button 
                 onClick={() => {
                     if(onThemeChange) {
@@ -705,16 +705,30 @@ const MatterBoard: React.FC<Props> = ({
                 pt-16 pb-[env(safe-area-inset-bottom)]
             `}>
                 <div className={columnHeaderClass}>
-                    <h2 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[160px]" title={activeStage?.title}>
+                    <h2 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[120px]" title={activeStage?.title}>
                         {activeStage?.title || "选择阶段"}
                     </h2>
-                    <button 
-                        disabled={!selectedStageId}
-                        onClick={addTask}
-                        className="text-xs flex items-center gap-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-2.5 py-1.5 rounded hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-50 transition-colors shadow-sm"
-                    >
-                        <Plus size={12} /> 新建
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                        {/* Mobile Only: View Overview Button */}
+                        <button 
+                            className="md:hidden flex items-center gap-1 text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-800"
+                            onClick={() => {
+                                setSelectedTaskId(null);
+                                setMobileView('DETAILS');
+                            }}
+                        >
+                            <LayoutDashboard size={12} /> 概览
+                        </button>
+
+                        <button 
+                            disabled={!selectedStageId}
+                            onClick={addTask}
+                            className="text-xs flex items-center gap-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-2.5 py-1.5 rounded hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                            <Plus size={12} /> 新建
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="flex-1">
@@ -822,7 +836,7 @@ const MatterBoard: React.FC<Props> = ({
             <div className={`
                 flex-1 w-full bg-white dark:bg-slate-900 
                 flex-col min-w-0 
-                overflow-y-auto overscroll-y-contain
+                overflow-y-auto overscroll-y-contain overflow-x-hidden
                 ${getColVisibility('DETAILS')} md:flex
                 pt-16 pb-[env(safe-area-inset-bottom)]
             `}>

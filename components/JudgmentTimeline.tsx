@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Matter, TaskStatus, JudgmentRecord, AIAnalysisResult } from '../types';
-import { Send, Clock, GitCommit, AlertCircle, CheckCircle2, PlayCircle, PauseCircle, HelpCircle, Sparkles, ChevronDown, ChevronUp, Copy, History, Tag, RefreshCw } from 'lucide-react';
+import { Send, Clock, GitCommit, AlertCircle, CheckCircle2, PlayCircle, PauseCircle, HelpCircle, Sparkles, ChevronDown, ChevronUp, Copy, History, Tag, RefreshCw, X } from 'lucide-react';
 import { analyzeJudgmentTimeline } from '../services/aiAnalysisService';
 
 interface Props {
@@ -18,6 +18,13 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   // Read analysis from the matter itself for persistence
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(!!matter.latestAnalysis);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Ensure panel opens when new analysis arrives
+  useEffect(() => {
+      if (matter.latestAnalysis) {
+          setIsAiPanelOpen(true);
+      }
+  }, [matter.latestAnalysis?.timestamp]);
 
   // Status config for selection
   const statusOptions = [
@@ -40,15 +47,14 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
 
     const newTimeline = [newRecord, ...(matter.judgmentTimeline || [])];
 
-    // Core Logic: Adding a judgment updates the Matter's "Current State"
     const updates: Partial<Matter> = {
       judgmentTimeline: newTimeline,
       lastUpdated: Date.now(),
-      currentSituation: newRecord.content, // Auto-update current situation
+      currentSituation: newRecord.content,
     };
 
     if (selectedStatus) {
-      updates.overallStatus = selectedStatus; // Auto-update overall status
+      updates.overallStatus = selectedStatus;
     }
 
     onUpdate({ ...matter, ...updates });
@@ -68,7 +74,6 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
     const result = await analyzeJudgmentTimeline(matter, allMatters);
     
     if (result) {
-        // Save to matter for persistence
         onUpdate({ 
             ...matter, 
             latestAnalysis: { ...result, timestamp: Date.now() },
@@ -93,8 +98,84 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       return new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
+  // --- AI Analysis Content Component (Shared) ---
+  const AnalysisContent = () => (
+      <div className="space-y-5 text-sm">
+        {isAnalyzing ? (
+            <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-3">
+                <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+                <span className="text-xs">正在整理历史记录并进行对照...</span>
+            </div>
+        ) : matter.latestAnalysis ? (
+            <>
+                {/* 1. Summary */}
+                <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">当前判断摘要</h4>
+                    <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm bg-slate-50 dark:bg-slate-700/30 p-3 rounded border border-slate-100 dark:border-slate-700/50">
+                        {matter.latestAnalysis.summary}
+                    </p>
+                </div>
+
+                {/* 2. Evolution */}
+                <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <History size={12}/> 判断演变
+                    </h4>
+                    <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
+                        {matter.latestAnalysis.evolution}
+                    </p>
+                </div>
+
+                {/* 3. Blockers */}
+                {matter.latestAnalysis.blockerTags.length > 0 && (
+                    <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Tag size={12}/> 高频卡点
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                            {matter.latestAnalysis.blockerTags.map((tag, i) => (
+                                <span key={i} className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. Similar Cases */}
+                <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <Copy size={12}/> 历史相似事项
+                    </h4>
+                    {matter.latestAnalysis.similarCases.length === 0 ? (
+                        <div className="text-xs text-slate-400 italic">未发现具有高度相似判断模式的历史事项。</div>
+                    ) : (
+                        <div className="grid gap-2">
+                            {matter.latestAnalysis.similarCases.map((sim, i) => (
+                                <div key={i} className="bg-slate-50 dark:bg-slate-700/30 rounded border border-slate-100 dark:border-slate-700 p-2">
+                                    <div className="font-bold text-slate-700 dark:text-slate-200 text-xs mb-1">{sim.matterName}</div>
+                                    <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">{sim.similarity}</div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
+                                        事实参考：{sim.facts}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">
+                    AI 辅助分析，仅供参考，不构成判断结论。请基于实际情况决策。
+                </div>
+            </>
+        ) : (
+            <div className="text-xs text-red-400 text-center">分析服务暂时不可用，请检查网络或配置。</div>
+        )}
+      </div>
+  );
+
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50 relative">
       
       {/* Header */}
       <div className="p-6 pb-2 shrink-0 flex items-start justify-between">
@@ -108,21 +189,25 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
             </p>
         </div>
         
-        {/* AI Analysis Trigger - Visible if not yet analyzed */}
-        {!matter.latestAnalysis && (
-            <button 
-                onClick={handleRunAnalysis}
-                disabled={isAnalyzing}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 rounded-lg text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors shadow-sm"
-            >
-                <Sparkles size={14} className={isAnalyzing ? 'animate-pulse' : ''} />
-                {isAnalyzing ? '分析中...' : 'AI 辅助分析'}
-            </button>
-        )}
+        {/* Trigger Button - Always visible if analysis exists or not */}
+        <button 
+            onClick={handleRunAnalysis}
+            disabled={isAnalyzing}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm ${
+                matter.latestAnalysis 
+                ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
+            }`}
+        >
+            <Sparkles size={14} className={isAnalyzing ? 'animate-pulse' : ''} />
+            {isAnalyzing ? '分析中...' : matter.latestAnalysis ? '重新分析' : 'AI 辅助分析'}
+        </button>
       </div>
 
-      {/* AI Analysis Panel - Using mx-4 for mobile safe margin */}
-      <div className={`mx-4 md:mx-6 mt-2 transition-all duration-500 ease-in-out overflow-hidden ${isAiPanelOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      {/* 
+          Desktop: Inline Expandable Panel (Visible on md+) 
+      */}
+      <div className={`hidden md:block mx-6 mt-2 transition-all duration-500 ease-in-out overflow-hidden ${isAiPanelOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
          <div className="bg-white dark:bg-slate-800 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm overflow-hidden">
              <div 
                 className="bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2 flex items-center justify-between cursor-pointer border-b border-indigo-100 dark:border-indigo-900/50"
@@ -138,95 +223,40 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                          </span>
                      )}
                  </div>
-                 <div className="flex items-center gap-3">
-                     {/* Refresh Button inside Panel */}
-                     {matter.latestAnalysis && (
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }}
-                            disabled={isAnalyzing}
-                            className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition-colors"
-                            title="重新分析"
-                         >
-                            <RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/>
-                         </button>
-                     )}
-                     {isAiPanelOpen ? <ChevronUp size={14} className="text-indigo-400"/> : <ChevronDown size={14} className="text-indigo-400"/>}
-                 </div>
+                 <ChevronUp size={14} className="text-indigo-400"/>
              </div>
-             
-             <div className="p-4 space-y-5 text-sm">
-                {isAnalyzing ? (
-                    <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-2">
-                        <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
-                        <span className="text-xs">正在整理历史记录并进行对照...</span>
-                    </div>
-                ) : matter.latestAnalysis ? (
-                    <>
-                        {/* 1. Summary */}
-                        <div className="space-y-1">
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">当前判断摘要</h4>
-                            <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm bg-slate-50 dark:bg-slate-700/30 p-2 rounded border border-slate-100 dark:border-slate-700/50">
-                                {matter.latestAnalysis.summary}
-                            </p>
-                        </div>
-
-                        {/* 2. Evolution */}
-                        <div className="space-y-1">
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                <History size={12}/> 判断演变
-                            </h4>
-                            <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
-                                {matter.latestAnalysis.evolution}
-                            </p>
-                        </div>
-
-                        {/* 3. Blockers */}
-                        {matter.latestAnalysis.blockerTags.length > 0 && (
-                            <div className="space-y-1">
-                                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                    <Tag size={12}/> 高频卡点
-                                </h4>
-                                <div className="flex flex-wrap gap-2">
-                                    {matter.latestAnalysis.blockerTags.map((tag, i) => (
-                                        <span key={i} className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 4. Similar Cases */}
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                <Copy size={12}/> 历史相似事项
-                            </h4>
-                            {matter.latestAnalysis.similarCases.length === 0 ? (
-                                <div className="text-xs text-slate-400 italic">未发现具有高度相似判断模式的历史事项。</div>
-                            ) : (
-                                <div className="grid gap-2">
-                                    {matter.latestAnalysis.similarCases.map((sim, i) => (
-                                        <div key={i} className="bg-slate-50 dark:bg-slate-700/30 rounded border border-slate-100 dark:border-slate-700 p-2">
-                                            <div className="font-bold text-slate-700 dark:text-slate-200 text-xs mb-1">{sim.matterName}</div>
-                                            <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">{sim.similarity}</div>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
-                                                事实参考：{sim.facts}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">
-                            AI 辅助分析，仅供参考，不构成判断结论。请基于实际情况决策。
-                        </div>
-                    </>
-                ) : (
-                    <div className="text-xs text-red-400 text-center">分析服务暂时不可用，请检查网络或配置。</div>
-                )}
+             <div className="p-4">
+                <AnalysisContent />
              </div>
          </div>
+      </div>
+
+      {/* 
+          Mobile: Bottom Sheet Modal (Visible only when open and on small screens)
+          Uses fixed positioning to overlay on top of content.
+      */}
+      <div className={`md:hidden fixed inset-0 z-50 transition-all duration-300 ${isAiPanelOpen ? 'visible' : 'invisible pointer-events-none'}`}>
+          {/* Backdrop */}
+          <div 
+            className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${isAiPanelOpen ? 'opacity-100' : 'opacity-0'}`}
+            onClick={() => setIsAiPanelOpen(false)}
+          ></div>
+          
+          {/* Sheet */}
+          <div className={`absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col transition-transform duration-300 ${isAiPanelOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-indigo-500" />
+                      <span className="font-bold text-slate-800 dark:text-white">智能归纳与对照</span>
+                  </div>
+                  <button onClick={() => setIsAiPanelOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full bg-slate-100 dark:bg-slate-800">
+                      <X size={18} />
+                  </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5">
+                  <AnalysisContent />
+              </div>
+          </div>
       </div>
 
       {/* Input Area */}
