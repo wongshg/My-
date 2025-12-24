@@ -453,7 +453,8 @@ const MatterBoard: React.FC<Props> = ({
   );
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden relative">
+    // Updated: Use fixed inset-0 to ensure full coverage on iOS and prevent overall page scrolling rubber-banding
+    <div className="fixed inset-0 w-full h-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
         
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-50 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
@@ -496,7 +497,6 @@ const MatterBoard: React.FC<Props> = ({
                 {getThemeIcon()}
             </button>
             
-            {/* Archive Button Restored */}
             {!isTemplateMode && (
                 <>
                     <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
@@ -660,8 +660,6 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* 
                 MOBILE LAYOUT (md:hidden)
-                - Vertical Split: Top = Tasks, Bottom = Timeline
-                - Resizable
             */}
             <div className="md:hidden w-full h-full flex flex-col">
                 
@@ -712,13 +710,13 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
 
                 {/* BOTTOM HALF: Judgment Timeline (Dynamic Height) */}
-                {/* Fix: removed solid bg here so content can flow if needed, but inner has bg. 
-                    Actually inner JudgmentTimeline has bg. 
-                    We ensure this container doesn't block background.
-                    We extend this to bottom of screen.
+                {/* 
+                    Updated for transparency: Removed solid bg from this container.
+                    It relies on JudgmentTimeline's bg, allowing it to feel less 'boxed' if desired, 
+                    or simply ensuring layout flow. 
                 */}
                 <div 
-                    className="flex flex-col bg-white dark:bg-slate-900 z-10 relative" 
+                    className="flex flex-col z-10 relative" 
                     style={{ height: `${bottomPanelHeightPercent}%` }}
                 >
                     <div className="flex-1 overflow-hidden">

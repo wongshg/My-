@@ -393,7 +393,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   value={newMaterialName}
                   onChange={(e) => setNewMaterialName(e.target.value)}
                   placeholder="输入名称 (Enter确认)"
-                  className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent"
+                  className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent min-w-0"
                   onKeyDown={(e) => {
                   if (e.key === 'Enter') confirmAddMaterial();
                   if (e.key === 'Escape') setIsAddingMaterial(false);
@@ -408,20 +408,16 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   );
 
   return (
-    // Changed: Remove overflow-y-auto from root to let parent (MatterBoard) handle scroll if desired, 
-    // BUT we need 'sticky' to work. For sticky to work, this component must be part of the flow.
-    // MatterBoard container has overflow-y-auto. 
-    // We remove the internal 'flex flex-col h-full' pattern and just use flow layout.
-    <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full">
+    // Updated: Added w-full max-w-full overflow-x-hidden to prevent horizontal scrolling
+    <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full w-full max-w-full overflow-x-hidden">
       
       {/* Header Area - Sticky */}
-      {/* Reduced padding p-6 -> p-4. Reduced gap-4 -> gap-3. */}
       <div className="sticky top-0 z-20 p-4 border-b border-slate-100/50 dark:border-slate-800/50 flex flex-col shrink-0 gap-3 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl transition-all">
         
         {/* Row 1: Title & Actions */}
         <div className="flex justify-between items-start">
             <input 
-                className="flex-1 w-full text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent mr-2 md:mr-4"
+                className="flex-1 w-full text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 placeholder-slate-300 bg-transparent mr-2 md:mr-4 min-w-0"
                 value={localTitle}
                 onChange={(e) => setLocalTitle(e.target.value)}
                 onBlur={handleTitleBlur}
@@ -514,7 +510,8 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       </div>
 
       {/* Content Area - Scroll flows under sticky header */}
-      <div className="p-4 space-y-6 pb-20">
+      {/* Updated: Use calc padding to respect safe area at bottom for "transparent" effect */}
+      <div className="p-4 space-y-6 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         
         {/* Description */}
         <div className="w-full group">
