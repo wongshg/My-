@@ -6,7 +6,7 @@ import JudgmentTimeline from './JudgmentTimeline';
 import { 
   Plus, ArrowLeft, Edit2, Archive, 
   Trash2, LayoutTemplate, Briefcase, X, Check, Download, Save, ChevronRight, Calendar, Clock,
-  Moon, Sun, Monitor, FileText, Package, LayoutDashboard, SunMoon, MoreHorizontal, GripHorizontal
+  Moon, Sun, Monitor, FileText, Package, LayoutDashboard, SunMoon, MoreHorizontal, GripHorizontal, GripVertical
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
@@ -69,25 +69,13 @@ const MatterBoard: React.FC<Props> = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
 
-  // Robust Scroll Reset: Fixes issue where timeline content is scrolled up (hidden) on mobile due to browser scroll restoration
+  // Drag and Drop State
+  const [dragItem, setDragItem] = useState<{ type: 'STAGE' | 'TASK', id: string, stageId?: string } | null>(null);
+
+  // Robust Scroll Reset
   useEffect(() => {
-    // 1. Immediate reset
+    // Only reset window scroll if not in mobile fixed mode (though harmless to keep)
     window.scrollTo(0, 0);
-    
-    // 2. Reset on next animation frame (after layout paint)
-    const rafId = requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-    });
-
-    // 3. Reset after small delay to override any aggressive browser scroll restoration
-    const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-    }, 100);
-
-    return () => {
-        cancelAnimationFrame(rafId);
-        clearTimeout(timer);
-    }
   }, [matter.id]);
 
   // Handle Deep Linking
@@ -172,6 +160,9 @@ const MatterBoard: React.FC<Props> = ({
   const activeTask = activeStage?.tasks.find(t => t.id === selectedTaskId);
 
   const goBack = () => {
+      if (isTemplateMode && isEditingTitle) {
+          if (!confirm("您有未保存的标题修改，确定要退出吗？")) return;
+      }
       onBack();
   };
 
@@ -238,6 +229,76 @@ const MatterBoard: React.FC<Props> = ({
           setIsExporting(false);
       }
   };
+
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, type: 'STAGE' | 'TASK', id: string, stageId?: string) => {
+    setDragItem({ type, id, stageId });
+    e.dataTransfer.effectAllowed = 'move';
+    // Visual tweak for transparent drag image could be added here
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetType: 'STAGE' | 'TASK', targetId: string, targetStageId?: string) => {
+    e.preventDefault();
+    if (!dragItem) return;
+
+    // STAGE REORDERING
+    if (dragItem.type === 'STAGE' && targetType === 'STAGE' && dragItem.id !== targetId) {
+        const oldIndex = matter.stages.findIndex(s => s.id === dragItem.id);
+        const newIndex = matter.stages.findIndex(s => s.id === targetId);
+        
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const newStages = [...matter.stages];
+        const [movedStage] = newStages.splice(oldIndex, 1);
+        newStages.splice(newIndex, 0, movedStage);
+        
+        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    }
+
+    // TASK REORDERING
+    if (dragItem.type === 'TASK' && targetType === 'TASK' && dragItem.id !== targetId && dragItem.stageId && targetStageId) {
+         const sourceStageIndex = matter.stages.findIndex(s => s.id === dragItem.stageId);
+         const targetStageIndex = matter.stages.findIndex(s => s.id === targetStageId);
+         
+         if (sourceStageIndex === -1 || targetStageIndex === -1) return;
+
+         const newStages = [...matter.stages];
+         
+         // Remove from source
+         const sourceStage = newStages[sourceStageIndex];
+         const taskIndex = sourceStage.tasks.findIndex(t => t.id === dragItem.id);
+         if (taskIndex === -1) return;
+         
+         const [movedTask] = sourceStage.tasks.splice(taskIndex, 1);
+
+         // Add to target
+         const targetStage = newStages[targetStageIndex]; // Note: reference copy, modifying tasks inside
+         // If same stage, we need to be careful with indices if we just mutated sourceStage
+         // But since we are using newStages copy, sourceStage and targetStage are references to objects inside newStages.
+         
+         if (sourceStageIndex === targetStageIndex) {
+            // Reordering within same stage
+            const targetTaskIndex = sourceStage.tasks.findIndex(t => t.id === targetId);
+            // Insert at target index (if target is below original, index might have shifted? No, we removed first)
+            // Splice works well here.
+            sourceStage.tasks.splice(targetTaskIndex, 0, movedTask);
+         } else {
+             // Moving to different stage
+             const targetTaskIndex = targetStage.tasks.findIndex(t => t.id === targetId);
+             targetStage.tasks.splice(targetTaskIndex, 0, movedTask);
+         }
+
+         onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    }
+    
+    setDragItem(null);
+  };
+
 
   // --- CRUD Operations ---
   const confirmAddStage = () => {
@@ -469,7 +530,11 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col overflow-hidden" onClick={() => setIsEditingTitle(true)}>
                   <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}
+                      {isTemplateMode ? (
+                          <span className="text-blue-500 font-medium">模板编辑模式</span>
+                      ) : (
+                          <><Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</>
+                      )}
                   </div>
                 </div>
               )}
@@ -496,9 +561,18 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
             )}
             
-            <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
-                另存模板
-            </button>
+            {isTemplateMode ? (
+                <button 
+                  onClick={() => onSaveTemplate(matter)} 
+                  className="flex items-center gap-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md shadow-sm transition-colors"
+                >
+                    <Save size={14} /> 保存修改
+                </button>
+            ) : (
+                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                    另存模板
+                </button>
+            )}
             
             {!isTemplateMode && (
                 <>
@@ -527,17 +601,24 @@ const MatterBoard: React.FC<Props> = ({
                         阶段
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
                     </div>
-                    <div className="px-2 space-y-1">
+                    <div className="px-2 space-y-1 pb-10">
                         {matter.stages.map((stage, idx) => {
                             const isEditing = editingStageId === stage.id;
                             return (
                                 <div 
                                     key={stage.id} 
+                                    draggable={!isEditing}
+                                    onDragStart={(e) => handleDragStart(e, 'STAGE', stage.id)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, 'STAGE', stage.id)}
                                     onClick={() => { setSelectedStageId(stage.id); setSelectedTaskId(null); }} 
-                                    className={`group p-2.5 rounded cursor-pointer text-sm font-medium relative flex items-center justify-between
-                                        ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                                    className={`group p-2.5 rounded cursor-pointer text-sm font-medium relative flex items-center justify-between transition-all border
+                                        ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600 border-transparent' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+                                        ${dragItem?.id === stage.id ? 'opacity-50 border-dashed border-blue-400' : ''}
+                                    `}
                                 >
                                     <div className="flex-1 min-w-0 truncate flex items-center gap-2">
+                                        <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <span className="opacity-50 text-xs">{idx + 1}.</span>
                                         {isEditing ? (
                                             <input 
@@ -583,17 +664,28 @@ const MatterBoard: React.FC<Props> = ({
                         <span className="font-bold text-slate-800 dark:text-slate-100 truncate">{activeStage?.title}</span>
                         <button onClick={addTask} disabled={!selectedStageId} className="text-xs bg-slate-900 text-white px-2 py-1 rounded"><Plus size={12}/></button>
                     </div>
-                    <div>
+                    <div className="pb-10">
                         {activeStage?.tasks.map((task, idx) => {
                             const isEditing = editingTaskId === task.id;
                             return (
                                 <div 
                                     key={task.id} 
+                                    draggable={!isEditing}
+                                    onDragStart={(e) => handleDragStart(e, 'TASK', task.id, activeStage.id)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, 'TASK', task.id, activeStage.id)}
                                     onClick={() => setSelectedTaskId(task.id)} 
-                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative
-                                        ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}`}
+                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all
+                                        ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}
+                                        ${dragItem?.id === task.id ? 'opacity-50 bg-blue-50' : ''}
+                                    `}
                                 >
-                                    <div className="flex justify-between mb-1"><StatusBadge status={task.status} /></div>
+                                    <div className="flex justify-between mb-1 items-start">
+                                        <div className="flex items-center gap-2">
+                                            <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity -ml-1" />
+                                            <StatusBadge status={task.status} />
+                                        </div>
+                                    </div>
                                     {isEditing ? (
                                         <input
                                             autoFocus
@@ -638,16 +730,13 @@ const MatterBoard: React.FC<Props> = ({
 
     {/* 
         MOBILE LAYOUT (Hidden on desktop)
-        Sticky Split Layout: 
-        - Header and Top Panel are 'sticky', meaning they stay fixed as you scroll down.
-        - The Resize Handle is also 'sticky'.
-        - The Bottom Panel (Timeline) is in the natural flow.
-        - Result: Scrolling moves the document, shrinking the browser address bar, but visual top elements persist.
+        Refactored to FIXED HEIGHT FLEX LAYOUT to solve scroll chaining issues.
+        Structure: Container(h-screen) -> Header(fixed) -> TopPanel(scroll) -> Resize(fixed) -> Timeline(scroll flex-1)
     */}
-    <div className="md:hidden w-full min-h-screen flex flex-col bg-white dark:bg-slate-950">
+    <div className="md:hidden w-full h-screen flex flex-col bg-white dark:bg-slate-950 overflow-hidden fixed inset-0">
         
-        {/* Sticky Header (h-16 = 4rem) */}
-        <header className="sticky top-0 z-50 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0">
+        {/* Header (Shrink-0) */}
+        <header className="shrink-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between z-50">
             <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
               <ArrowLeft size={18} />
@@ -676,7 +765,11 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col overflow-hidden" onClick={() => setIsEditingTitle(true)}>
                   <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}
+                      {isTemplateMode ? (
+                          <span className="text-blue-500 font-medium">模板编辑模式</span>
+                      ) : (
+                          <><Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</>
+                      )}
                   </div>
                 </div>
               )}
@@ -686,16 +779,25 @@ const MatterBoard: React.FC<Props> = ({
              <button onClick={() => onThemeChange && onThemeChange(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
                 {getThemeIcon()}
             </button>
-            <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
-                另存模板
-            </button>
+            
+            {isTemplateMode ? (
+                <button 
+                  onClick={() => onSaveTemplate(matter)} 
+                  className="p-2 text-blue-600 dark:text-blue-400 font-bold text-xs bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                >
+                    <Save size={18} />
+                </button>
+            ) : (
+                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                    另存模板
+                </button>
+            )}
           </div>
         </header>
 
-        {/* Sticky Top Panel (Stages + Tasks) */}
-        {/* top-16 ensures it sticks right below the header */}
+        {/* Top Panel (Stages + Tasks) - Independent Scroll */}
         <div 
-            className="sticky top-16 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur shadow-sm overflow-y-auto flex flex-col"
+            className="shrink-0 bg-white/95 dark:bg-slate-950/95 shadow-sm overflow-y-auto flex flex-col"
             style={{ height: `${topPanelHeightVh}vh` }}
         >
                 {renderMobileStageSelector()}
@@ -732,21 +834,18 @@ const MatterBoard: React.FC<Props> = ({
                 </div>
         </div>
 
-        {/* Sticky Resize Handle */}
-        {/* top calculation: 4rem (header) + heightVh */}
+        {/* Resize Handle (Fixed) */}
         <div 
             ref={resizeRef}
-            className="sticky z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shrink-0 shadow-sm"
-            style={{ top: `calc(4rem + ${topPanelHeightVh}vh)` }}
+            className="shrink-0 z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shadow-sm"
             onMouseDown={handleResizeStart}
             onTouchStart={handleResizeStart}
         >
             <GripHorizontal size={16} className="text-slate-400" />
         </div>
 
-        {/* Bottom Panel (Timeline) */}
-        {/* Natural Flow - allows body scroll. Removed min-h-screen to avoid blank space issues. */}
-        <div className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] bg-transparent relative z-0">
+        {/* Bottom Panel (Timeline) - Independent Scroll (Flex-1) */}
+        <div className="flex-1 overflow-y-auto bg-transparent relative z-0 pb-[calc(2rem+env(safe-area-inset-bottom))]">
              <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
         </div>
 
