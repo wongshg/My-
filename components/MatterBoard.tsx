@@ -74,7 +74,6 @@ const MatterBoard: React.FC<Props> = ({
 
   // Robust Scroll Reset
   useEffect(() => {
-    // Only reset window scroll if not in mobile fixed mode (though harmless to keep)
     window.scrollTo(0, 0);
   }, [matter.id]);
 
@@ -119,12 +118,10 @@ const MatterBoard: React.FC<Props> = ({
           clientY = e.clientY;
       }
 
-      // Header is usually 64px (4rem). We calculate height relative to viewport.
       const headerOffset = 64; 
       const rawHeight = clientY - headerOffset;
       const vh = (rawHeight / window.innerHeight) * 100;
 
-      // Clamp between 20vh and 70vh
       if (vh > 20 && vh < 70) {
           setTopPanelHeightVh(vh);
       }
@@ -230,15 +227,13 @@ const MatterBoard: React.FC<Props> = ({
       }
   };
 
-  // --- Drag and Drop Handlers ---
   const handleDragStart = (e: React.DragEvent, type: 'STAGE' | 'TASK', id: string, stageId?: string) => {
     setDragItem({ type, id, stageId });
     e.dataTransfer.effectAllowed = 'move';
-    // Visual tweak for transparent drag image could be added here
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
 
@@ -277,18 +272,12 @@ const MatterBoard: React.FC<Props> = ({
          const [movedTask] = sourceStage.tasks.splice(taskIndex, 1);
 
          // Add to target
-         const targetStage = newStages[targetStageIndex]; // Note: reference copy, modifying tasks inside
-         // If same stage, we need to be careful with indices if we just mutated sourceStage
-         // But since we are using newStages copy, sourceStage and targetStage are references to objects inside newStages.
+         const targetStage = newStages[targetStageIndex]; 
          
          if (sourceStageIndex === targetStageIndex) {
-            // Reordering within same stage
             const targetTaskIndex = sourceStage.tasks.findIndex(t => t.id === targetId);
-            // Insert at target index (if target is below original, index might have shifted? No, we removed first)
-            // Splice works well here.
             sourceStage.tasks.splice(targetTaskIndex, 0, movedTask);
          } else {
-             // Moving to different stage
              const targetTaskIndex = targetStage.tasks.findIndex(t => t.id === targetId);
              targetStage.tasks.splice(targetTaskIndex, 0, movedTask);
          }
@@ -501,7 +490,7 @@ const MatterBoard: React.FC<Props> = ({
     */}
     <div className="hidden md:flex w-full h-screen flex-col bg-white dark:bg-slate-950 overflow-hidden">
         {/* Desktop Header */}
-        <header className="h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0">
+        <header className="h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0 relative z-50">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
               <ArrowLeft size={18} />
@@ -546,7 +535,7 @@ const MatterBoard: React.FC<Props> = ({
             </button>
 
              {!isTemplateMode && (
-                <div className="hidden md:block relative">
+                <div className="hidden md:block relative z-50">
                     <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-md">
                         <Download size={14} /> 下载
                     </button>
@@ -675,36 +664,39 @@ const MatterBoard: React.FC<Props> = ({
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, 'TASK', task.id, activeStage.id)}
                                     onClick={() => setSelectedTaskId(task.id)} 
-                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all
+                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all flex items-center justify-between
                                         ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}
                                         ${dragItem?.id === task.id ? 'opacity-50 bg-blue-50' : ''}
                                     `}
                                 >
-                                    <div className="flex justify-between mb-1 items-start">
-                                        <div className="flex items-center gap-2">
-                                            <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity -ml-1" />
-                                            <StatusBadge status={task.status} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between mb-1 items-start">
+                                            <div className="flex items-center gap-2">
+                                                <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity -ml-1" />
+                                                <StatusBadge status={task.status} />
+                                            </div>
                                         </div>
+                                        {isEditing ? (
+                                            <input
+                                                autoFocus
+                                                className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100 text-sm font-medium"
+                                                value={editingTaskName}
+                                                onChange={(e) => setEditingTaskName(e.target.value)}
+                                                onBlur={saveTaskName}
+                                                onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 pr-2" onDoubleClick={(e) => { e.stopPropagation(); startEditingTask(task); }}>
+                                                {task.title}
+                                            </div>
+                                        )}
                                     </div>
-                                    {isEditing ? (
-                                        <input
-                                            autoFocus
-                                            className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100 text-sm font-medium"
-                                            value={editingTaskName}
-                                            onChange={(e) => setEditingTaskName(e.target.value)}
-                                            onBlur={saveTaskName}
-                                            onKeyDown={(e) => e.key === 'Enter' && saveTaskName()}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    ) : (
-                                        <div className="text-sm font-medium text-slate-800 dark:text-slate-200 pr-6" onDoubleClick={(e) => { e.stopPropagation(); startEditingTask(task); }}>
-                                            {task.title}
-                                        </div>
-                                    )}
+                                    
                                     {!isEditing && (
-                                        <div className="absolute top-2 right-2 hidden group-hover:flex flex-col gap-1 bg-white/50 dark:bg-slate-800/50 rounded">
-                                            <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 text-slate-400 hover:text-blue-500"><Edit2 size={12}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
+                                        <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+                                            <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
                                         </div>
                                     )}
                                 </div>

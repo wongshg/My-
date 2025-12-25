@@ -109,7 +109,7 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   );
 
   return (
-    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 md:rounded-lg">
+    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 md:rounded-lg min-h-full">
       
       {/* Header - Sticky in Mobile is handled by parent, but we keep it here for structure. 
           In mobile sticky layout, this header just scrolls with the timeline body. 
@@ -133,7 +133,7 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       </div>
 
       {/* Content */}
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-6 flex-1">
          
          {/* AI Panel */}
          {(matter.latestAnalysis || isAnalyzing) && (

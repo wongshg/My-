@@ -400,17 +400,17 @@ const Dashboard: React.FC<Props> = ({
                     {aiResult ? (
                         <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                              <div className="space-y-4">
-                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">{aiResult.overview}</p></div>
-                                 {aiResult.workload && <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiResult.workload}</p></div>}
+                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg">{aiResult.overview}</p></div>
+                                 {aiResult.workload && <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.workload}</p></div>}
                              </div>
                              <div className="space-y-4">
                                  <div>
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻类型</h4>
                                      {aiResult.blockerTypes.length > 0 ? (
-                                         <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium">{b.tag}</span><span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span></div>))}</div>
-                                     ) : (<div className="text-slate-400 italic text-xs">暂无明显受阻归类</div>)}
+                                         <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium text-sm">{b.tag}</span><span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span></div>))}</div>
+                                     ) : (<div className="text-slate-400 italic text-sm">暂无明显受阻归类</div>)}
                                  </div>
-                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">{aiResult.updateRhythm}</p></div>
+                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.updateRhythm}</p></div>
                              </div>
                              <div className="md:col-span-2 text-center pt-2 border-t border-indigo-50 dark:border-indigo-900/30"><span className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">✨ AI 辅助分析，仅用于工作态势参考</span></div>
                         </div>

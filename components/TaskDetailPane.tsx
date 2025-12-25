@@ -380,33 +380,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       );
   }
 
-  // Input Rendering Component
-  const AddMaterialInput = () => (
-      <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
-          <Circle size={20} className="text-slate-300" />
-          <div className="flex-1">
-              <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">
-                  {addingCategory === 'REFERENCE' ? '新增参考资料' : '新增交付产物'}
-              </div>
-              <input
-                  ref={materialInputRef}
-                  value={newMaterialName}
-                  onChange={(e) => setNewMaterialName(e.target.value)}
-                  placeholder="输入名称 (Enter确认)"
-                  className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent min-w-0"
-                  onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmAddMaterial();
-                  if (e.key === 'Escape') setIsAddingMaterial(false);
-                  }}
-              />
-          </div>
-          <div className="flex items-center gap-1">
-              <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
-              <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
-          </div>
-      </div>
-  );
-
   return (
     // Updated: Added w-full max-w-full overflow-x-hidden to prevent horizontal scrolling
     <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full w-full max-w-full overflow-x-hidden">
@@ -617,7 +590,29 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                         )}
                    </div>
                    {renderMaterialList(referenceMaterials, 'REFERENCE')}
-                   {isAddingMaterial && addingCategory === 'REFERENCE' && <AddMaterialInput />}
+                   {isAddingMaterial && addingCategory === 'REFERENCE' && (
+                       <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+                          <Circle size={20} className="text-slate-300" />
+                          <div className="flex-1">
+                              <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">新增参考资料</div>
+                              <input
+                                  ref={materialInputRef}
+                                  value={newMaterialName}
+                                  onChange={(e) => setNewMaterialName(e.target.value)}
+                                  placeholder="输入名称 (Enter确认)"
+                                  className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent min-w-0"
+                                  onKeyDown={(e) => {
+                                  if (e.key === 'Enter') confirmAddMaterial();
+                                  if (e.key === 'Escape') setIsAddingMaterial(false);
+                                  }}
+                              />
+                          </div>
+                          <div className="flex items-center gap-1">
+                              <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+                              <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
+                          </div>
+                      </div>
+                   )}
                </div>
            )}
 
@@ -637,7 +632,29 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                     )}
                </div>
                {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
-               {isAddingMaterial && addingCategory === 'DELIVERABLE' && <AddMaterialInput />}
+               {isAddingMaterial && addingCategory === 'DELIVERABLE' && (
+                  <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+                      <Circle size={20} className="text-slate-300" />
+                      <div className="flex-1">
+                          <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">新增交付产物</div>
+                          <input
+                              ref={materialInputRef}
+                              value={newMaterialName}
+                              onChange={(e) => setNewMaterialName(e.target.value)}
+                              placeholder="输入名称 (Enter确认)"
+                              className="w-full text-sm outline-none text-slate-700 dark:text-slate-200 bg-transparent min-w-0"
+                              onKeyDown={(e) => {
+                              if (e.key === 'Enter') confirmAddMaterial();
+                              if (e.key === 'Escape') setIsAddingMaterial(false);
+                              }}
+                          />
+                      </div>
+                      <div className="flex items-center gap-1">
+                          <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+                          <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
+                      </div>
+                  </div>
+               )}
            </div>
         </div>
 
