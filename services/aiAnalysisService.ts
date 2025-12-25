@@ -275,3 +275,58 @@ export const generateTemplateFromText = async (text: string): Promise<Template |
         return null;
     }
 };
+
+export const parseMaterialsFromText = async (text: string): Promise<{ name: string, category: 'REFERENCE' | 'DELIVERABLE' }[] | null> => {
+    const { apiKey, apiHost } = getSettings();
+    if (!apiKey) {
+        alert("请先配置 API Key。");
+        return null;
+    }
+
+    const systemPrompt = `
+      你是一个行政或法务助手。用户会输入一段工作描述、邮件内容或清单。
+      你需要从中提取出所有的“文件”、“材料”或“证照”名称。
+      
+      请根据上下文判断该文件是：
+      - 'REFERENCE': 用户需要参考的资料、模板、法律法规等。
+      - 'DELIVERABLE': 用户需要产出、签署或获取的最终交付文件（如申请书、决议、批复）。
+      
+      输出纯 JSON 数组，格式如下 (不要 Markdown)：
+      [
+        { "name": "公司章程", "category": "REFERENCE" },
+        { "name": "股东会决议", "category": "DELIVERABLE" }
+      ]
+    `;
+
+    try {
+        const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
+        const response = await fetch(`${cleanHost}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text }
+                ],
+                temperature: 0.3
+            })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+
+        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson);
+
+    } catch (e) {
+        console.error("Material Parsing Failed:", e);
+        alert("识别失败");
+        return null;
+    }
+};

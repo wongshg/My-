@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, TaskStatus, Material, StatusUpdate, AttachedFile } from '../types';
-import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package, BookOpen } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package, BookOpen, GripVertical, Sparkles } from 'lucide-react';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
+import { parseMaterialsFromText } from '../services/aiAnalysisService';
 
 interface Props {
   task: Task;
@@ -20,6 +21,11 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   const [newMaterialName, setNewMaterialName] = useState('');
   const materialInputRef = useRef<HTMLInputElement>(null);
 
+  // AI Material Import State
+  const [showAIMaterialModal, setShowAIMaterialModal] = useState(false);
+  const [aiMaterialText, setAiMaterialText] = useState('');
+  const [isAnalyzingMaterials, setIsAnalyzingMaterials] = useState(false);
+
   // Status Update State
   const [newUpdateContent, setNewUpdateContent] = useState('');
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
@@ -29,7 +35,8 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   const [customStatusText, setCustomStatusText] = useState(task.customStatus || '自定义状态');
 
   // Drag and Drop State
-  const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null); // For File Drop
+  const [sortDragId, setSortDragId] = useState<string | null>(null); // For Sorting Materials
 
   // Description auto-resize ref
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
@@ -43,6 +50,8 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     setIsEditingCustomStatus(false);
     setCustomStatusText(task.customStatus || '自定义状态');
     setDragActiveId(null);
+    setSortDragId(null);
+    setShowAIMaterialModal(false);
   }, [task.id]);
 
   useEffect(() => {
@@ -141,6 +150,29 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     onUpdate({ ...task, materials: task.materials.filter(m => m.id !== mat.id), lastUpdated: Date.now() });
   };
 
+  // --- AI Material Analysis ---
+  const handleAIAnalyzeMaterials = async () => {
+      if (!aiMaterialText.trim()) return;
+      setIsAnalyzingMaterials(true);
+      const results = await parseMaterialsFromText(aiMaterialText);
+      setIsAnalyzingMaterials(false);
+
+      if (results && results.length > 0) {
+          const newItems: Material[] = results.map(r => ({
+              id: Math.random().toString(36).substr(2, 9),
+              name: r.name,
+              category: r.category,
+              isReady: false,
+              files: []
+          }));
+          onUpdate({ ...task, materials: [...task.materials, ...newItems], lastUpdated: Date.now() });
+          setShowAIMaterialModal(false);
+          setAiMaterialText('');
+      } else {
+          alert("未识别到有效的材料清单");
+      }
+  };
+
   // --- File Handling (Multi-file Support) ---
 
   const processFile = async (matId: string, file: File) => {
@@ -215,15 +247,16 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       onUpdate({ ...task, materials: newMaterials, lastUpdated: Date.now() });
   };
 
-  // --- Drag and Drop Handlers ---
+  // --- Drag and Drop Handlers (File Upload) ---
 
-  const handleDragEnter = (e: React.DragEvent, matId: string) => {
+  const handleFileDragEnter = (e: React.DragEvent, matId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    if (sortDragId) return; // Ignore if sorting
     setDragActiveId(matId);
   };
 
-  const handleDragLeave = (e: React.DragEvent, matId: string) => {
+  const handleFileDragLeave = (e: React.DragEvent, matId: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (dragActiveId === matId) {
@@ -231,15 +264,19 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleFileDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
-  const handleDrop = async (e: React.DragEvent, matId: string) => {
+  const handleFileDrop = async (e: React.DragEvent, matId: string) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActiveId(null);
+
+    // Check if it's a sort action
+    const sortId = e.dataTransfer.getData('sortMaterialId');
+    if (sortId) return; // Handled by sort drop
 
     if (e.dataTransfer.files) {
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
@@ -247,6 +284,38 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         }
     }
   };
+
+  // --- Drag and Drop Handlers (Reorder Materials) ---
+  const handleSortDragStart = (e: React.DragEvent, matId: string) => {
+      e.dataTransfer.setData('sortMaterialId', matId);
+      e.dataTransfer.effectAllowed = 'move';
+      setSortDragId(matId);
+  };
+
+  const handleSortDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleSortDrop = (e: React.DragEvent, targetId: string) => {
+      e.preventDefault();
+      setSortDragId(null);
+      const sourceId = e.dataTransfer.getData('sortMaterialId');
+      
+      if (!sourceId || sourceId === targetId) return;
+
+      const items = [...task.materials];
+      const sourceIndex = items.findIndex(i => i.id === sourceId);
+      const targetIndex = items.findIndex(i => i.id === targetId);
+
+      if (sourceIndex === -1 || targetIndex === -1) return;
+
+      const [moved] = items.splice(sourceIndex, 1);
+      items.splice(targetIndex, 0, moved);
+
+      onUpdate({ ...task, materials: items, lastUpdated: Date.now() });
+  };
+
 
   // --- Status Updates ---
 
@@ -332,19 +401,26 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                return (
                <div 
                   key={m.id}
+                  draggable // Enable sorting
+                  onDragStart={(e) => handleSortDragStart(e, m.id)}
+                  onDragOver={handleSortDragOver}
+                  onDrop={(e) => {
+                      if (sortDragId) handleSortDrop(e, m.id);
+                      else if (!isRef || isTemplateMode) handleFileDrop(e, m.id);
+                  }}
                   onDragEnter={(e) => {
-                      if (!isRef || isTemplateMode) handleDragEnter(e, m.id)
+                      if (sortDragId) return;
+                      if (!isRef || isTemplateMode) handleFileDragEnter(e, m.id)
                   }}
                   onDragLeave={(e) => {
-                      if (!isRef || isTemplateMode) handleDragLeave(e, m.id)
-                  }}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => {
-                      if (!isRef || isTemplateMode) handleDrop(e, m.id)
+                      if (sortDragId) return;
+                      if (!isRef || isTemplateMode) handleFileDragLeave(e, m.id)
                   }}
                   className={`group rounded-lg border transition-all relative p-2.5 ${
                       dragActiveId === m.id 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 border-dashed z-10' 
+                      : sortDragId === m.id
+                      ? 'opacity-50 border-dashed border-slate-300'
                       : 'border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
                   }`}
                >
@@ -354,9 +430,14 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                      </div>
                   )}
 
-                  {/* Header Row: Icon + Name + Upload Button + Delete Button */}
+                  {/* Header Row: Grip + Icon + Name + Upload Button + Delete Button */}
                   <div className="flex items-center gap-2 mb-1">
-                      {/* Icon */}
+                      {/* Drag Handle */}
+                      <div className="cursor-move text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <GripVertical size={14} />
+                      </div>
+
+                      {/* Status Icon / Type Icon */}
                       {isRef ? (
                           <div className="shrink-0 text-blue-500 dark:text-blue-400 opacity-80">
                               <BookOpen size={16} />
@@ -405,18 +486,18 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
                   {/* File List */}
                   {files.length > 0 && (
-                      <div className="pl-6 space-y-1 mt-1">
+                      <div className="pl-8 space-y-1 mt-1">
                           {files.map(file => (
                               <div key={file.id} className="flex items-center justify-between group/file text-xs bg-slate-50 dark:bg-slate-800/50 rounded px-2 py-1 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <button 
                                       onClick={() => handleFileDownload(file.id, file.name)}
-                                      className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[70%]"
+                                      className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[60%]"
                                       title={file.name}
                                   >
                                       <FileIcon size={10} /> {file.name}
                                   </button>
                                   <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                                      {file.timestamp > 0 && <span>{new Date(file.timestamp).toLocaleDateString()}</span>}
+                                      {file.timestamp > 0 && <span>{new Date(file.timestamp).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: false })}</span>}
                                       {(!isRef || isTemplateMode) && (
                                           <button 
                                               onClick={() => deleteAttachedFile(m.id, file.id)}
@@ -439,7 +520,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
   return (
     // Updated: Added w-full max-w-full overflow-x-hidden to prevent horizontal scrolling
-    <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full w-full max-w-full overflow-x-hidden">
+    <div className="flex flex-col bg-white dark:bg-slate-900 animate-fadeIn min-h-full w-full max-w-full overflow-x-hidden relative">
       
       {/* Header Area - Sticky */}
       <div className="sticky top-0 z-20 p-4 border-b border-slate-100/50 dark:border-slate-800/50 flex flex-col shrink-0 gap-3 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl transition-all">
@@ -630,6 +711,15 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         {/* Materials Sections */}
         <div className="space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800">
            
+           <div className="flex justify-end">
+               <button 
+                   onClick={() => setShowAIMaterialModal(true)} 
+                   className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 py-1 px-2 bg-indigo-50 dark:bg-indigo-900/20 rounded font-medium transition-colors"
+               >
+                   <Sparkles size={12} /> AI 识别材料
+               </button>
+           </div>
+
            {/* Section 1: Reference Materials */}
            {(referenceMaterials.length > 0 || isTemplateMode) && (
                <div>
@@ -716,6 +806,36 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         </div>
 
       </div>
+
+      {/* AI Material Import Modal */}
+      {showAIMaterialModal && (
+          <div className="absolute inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-30 p-4 backdrop-blur-sm" onClick={() => setShowAIMaterialModal(false)}>
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-4 animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                          <Sparkles size={16} /> 批量提取材料
+                      </h3>
+                      <button onClick={() => setShowAIMaterialModal(false)}><X size={16} className="text-slate-400 hover:text-slate-600"/></button>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">
+                      粘贴您的工作说明、清单或邮件片段，AI 将自动识别并添加材料。
+                  </p>
+                  <textarea 
+                      className="w-full h-32 p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-3"
+                      placeholder="例如：请准备公司章程复印件、股东会决议和清算报告。"
+                      value={aiMaterialText}
+                      onChange={(e) => setAiMaterialText(e.target.value)}
+                  />
+                  <button 
+                      onClick={handleAIAnalyzeMaterials}
+                      disabled={!aiMaterialText.trim() || isAnalyzingMaterials}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
+                  >
+                      {isAnalyzingMaterials ? <><Sparkles size={14} className="animate-spin"/> 分析中...</> : '开始识别'}
+                  </button>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
