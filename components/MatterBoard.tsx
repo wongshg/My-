@@ -507,20 +507,32 @@ const MatterBoard: React.FC<Props> = ({
              )}
              
              {isEditingTitle ? (
-                <input 
-                  autoFocus
-                  className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
-                  value={editTitleVal}
-                  onChange={(e) => setEditTitleVal(e.target.value)}
-                  onBlur={saveHeaderInfo}
-                  onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
-                />
+                <div className="flex flex-col w-full max-w-lg">
+                    <input 
+                      autoFocus
+                      className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
+                      value={editTitleVal}
+                      onChange={(e) => setEditTitleVal(e.target.value)}
+                      onBlur={() => { if(!isTemplateMode) saveHeaderInfo() }} // In template mode, blur shouldn't close instantly to allow editing desc
+                      onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
+                      placeholder="事项/模板标题"
+                    />
+                    {isTemplateMode && (
+                         <input 
+                           className="text-xs text-slate-500 dark:text-slate-400 bg-transparent outline-none mt-1 border-b border-slate-200 dark:border-slate-700 placeholder-slate-300 focus:border-blue-400"
+                           value={editDescVal}
+                           onChange={(e) => setEditDescVal(e.target.value)}
+                           onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
+                           placeholder="输入模板适用说明..."
+                        />
+                    )}
+                </div>
               ) : (
-                <div className="flex flex-col overflow-hidden" onClick={() => setIsEditingTitle(true)}>
+                <div className="flex flex-col overflow-hidden cursor-pointer" onClick={() => setIsEditingTitle(true)}>
                   <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       {isTemplateMode ? (
-                          <span className="text-blue-500 font-medium">模板编辑模式</span>
+                          <span className="text-slate-500">{matter.type || "点击编辑适用说明"}</span>
                       ) : (
                           <><Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</>
                       )}
@@ -533,6 +545,15 @@ const MatterBoard: React.FC<Props> = ({
              <button onClick={() => onThemeChange && onThemeChange(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
                 {getThemeIcon()}
             </button>
+            
+             {isTemplateMode && isEditingTitle && (
+                <button 
+                  onClick={saveHeaderInfo}
+                  className="p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200"
+                >
+                    <Check size={16} />
+                </button>
+             )}
 
              {!isTemplateMode && (
                 <div className="hidden md:block relative z-50">
@@ -586,11 +607,12 @@ const MatterBoard: React.FC<Props> = ({
         <div className="flex-1 w-full overflow-hidden flex relative">
             {/* Col 1: Stages */}
                 <div className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-y-auto">
-                    <div className="p-4 font-bold text-xs text-slate-400 uppercase tracking-wider flex justify-between">
+                    {/* Fixed Sticky Header for Stages */}
+                    <div className="sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur p-4 font-bold text-xs text-slate-400 uppercase tracking-wider flex justify-between border-b border-slate-200/50 dark:border-slate-800/50">
                         阶段
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
                     </div>
-                    <div className="px-2 space-y-1 pb-10">
+                    <div className="px-2 space-y-1 pb-10 mt-2">
                         {matter.stages.map((stage, idx) => {
                             const isEditing = editingStageId === stage.id;
                             return (

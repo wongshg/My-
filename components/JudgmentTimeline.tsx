@@ -111,10 +111,8 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   return (
     <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 md:rounded-lg min-h-full">
       
-      {/* Header - Sticky in Mobile is handled by parent, but we keep it here for structure. 
-          In mobile sticky layout, this header just scrolls with the timeline body. 
-      */}
-      <div className="p-4 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm md:backdrop-filter-none sticky md:static top-0 z-20">
+      {/* Header - Sticky */}
+      <div className="sticky top-0 z-10 p-4 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all">
         <h2 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <GitCommit size={16} className="text-blue-600 dark:text-blue-400" />
             判断时间线

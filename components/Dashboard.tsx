@@ -122,7 +122,6 @@ const MatterCard: React.FC<{
    );
 };
 
-// ... (AttentionGroupCard and DetailedStatCard kept same as before, simplified for brevity in XML)
 const AttentionGroupCard: React.FC<{
   group: AttentionMatterGroup;
   onSelectMatter: (id: string) => void;
@@ -205,7 +204,7 @@ const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => 
     const sortedTypes = Object.entries(breakdown).sort((a: any, b: any) => b[1] - a[1]);
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-fit">
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
              <div className="flex items-center gap-3 mb-3">
                 <div className={`p-2 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
                     <Icon size={18} className={color.replace('bg-', 'text-').replace('500', '600 dark:text-400')} />
@@ -400,7 +399,7 @@ const Dashboard: React.FC<Props> = ({
                     {aiResult ? (
                         <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                              <div className="space-y-4">
-                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm bg-white/60 dark:bg-slate-800/60 p-3 rounded-lg">{aiResult.overview}</p></div>
+                                 <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p></div>
                                  {aiResult.workload && <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.workload}</p></div>}
                              </div>
                              <div className="space-y-4">
@@ -420,7 +419,7 @@ const Dashboard: React.FC<Props> = ({
 
             {/* Stats */}
             <div className="mb-8 mt-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-start">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-stretch">
                      <DetailedStatCard label="正在推进" matters={inProgressMatters} count={statInProgressMatters} icon={Activity} color="bg-blue-500" />
                      <DetailedStatCard label="急需关注" matters={attentionGroups.map(g => g.matter)} count={statUrgentMatters} icon={AlertCircle} color="bg-amber-500" />
                  </div>
@@ -445,11 +444,38 @@ const Dashboard: React.FC<Props> = ({
             <div className="space-y-12">
                 <section>
                     <div className="flex items-center gap-2 mb-4"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">急需关注</h2><span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span></div>
-                    {attentionGroups.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2"><CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{attentionGroups.map((group, idx) => (<AttentionGroupCard key={group.matter.id} group={group} onSelectMatter={onSelectMatter} onJumpToTask={onJumpToTask} onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)}/>))}</div>)}
+                    {attentionGroups.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2"><CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{attentionGroups.map((group, idx) => (<AttentionGroupCard key={group.matter.id} group={group} onSelectMatter={onSelectMatter} onJumpToTask={onJumpToTask} onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)} />))}</div>)}
                 </section>
+
                 <section>
-                <div className="flex items-center gap-2 mb-4"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">正在推进</h2><span className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span></div>
-                {inProgressMatters.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-8 text-center bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">暂无常规推进中的事项。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{inProgressMatters.map(m => (<MatterCard key={m.id} m={m} type="normal" onSelectMatter={onSelectMatter} onDeleteMatter={onDeleteMatter} hasAttention={attentionGroups.some(ag => ag.matter.id === m.id)}/>))}</div>)}
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">进行中事项</h2>
+                        <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span>
+                    </div>
+                    
+                    {inProgressMatters.length === 0 ? (
+                        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                             <p className="text-slate-400 text-sm mb-2">暂无进行中的事项</p>
+                             <button onClick={onNewMatter} className="text-blue-600 dark:text-blue-400 text-xs hover:underline">创建一个新事项</button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            {inProgressMatters.map(m => {
+                                const hasAttention = attentionGroups.some(g => g.matter.id === m.id);
+                                return (
+                                    <MatterCard 
+                                        key={m.id} 
+                                        m={m} 
+                                        type="normal" 
+                                        onSelectMatter={onSelectMatter} 
+                                        onDeleteMatter={onDeleteMatter}
+                                        hasAttention={hasAttention}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
             </div>
       </div>
