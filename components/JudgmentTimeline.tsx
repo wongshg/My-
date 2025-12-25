@@ -143,14 +143,38 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                          {matter.latestAnalysis && !isAnalyzing && (<span className="text-[10px] text-slate-400 ml-1">{new Date(matter.latestAnalysis.timestamp).toLocaleTimeString()}</span>)}
                      </div>
                      <div className="flex items-center gap-2">
-                         {matter.analysisHistory && matter.analysisHistory.length > 1 && (<button onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }} className={`text-[10px] px-2 py-0.5 rounded border ${showHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-500 border-slate-200'}`}>{showHistory ? '返回最新' : '历史记录'}</button>)}
+                         {matter.analysisHistory && matter.analysisHistory.length > 1 && (
+                             <button 
+                                 onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }} 
+                                 className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${showHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white/50 text-slate-500 border-transparent hover:bg-white hover:text-indigo-600'}`}
+                             >
+                                 {showHistory ? '返回最新' : '历史记录'}
+                             </button>
+                         )}
                          <button onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }} disabled={isAnalyzing} className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"><RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/></button>
                          <div className="text-indigo-400">{isAiPanelExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}</div>
                      </div>
                  </div>
                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isAiPanelExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                      <div className="p-4">
-                         {isAnalyzing ? (<div className="py-6 flex flex-col items-center justify-center text-slate-400 gap-2"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div><span className="text-xs">正在分析时间线数据...</span></div>) : showHistory && matter.analysisHistory ? (<div className="space-y-4"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">历史分析记录 ({matter.analysisHistory.length})</h4>{matter.analysisHistory.map((hist, idx) => (<div key={hist.id || idx} className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"><div className="text-[10px] text-slate-400 mb-1">{new Date(hist.timestamp).toLocaleString()}</div><p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{hist.summary}</p></div>))}</div>) : matter.latestAnalysis ? (<AnalysisResultCard result={matter.latestAnalysis} />) : null}
+                         {isAnalyzing ? (
+                             <div className="py-6 flex flex-col items-center justify-center text-slate-400 gap-2">
+                                 <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+                                 <span className="text-xs">正在分析时间线数据...</span>
+                             </div>
+                         ) : showHistory && matter.analysisHistory ? (
+                             <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">历史分析记录 ({matter.analysisHistory.length})</h4>
+                                 {matter.analysisHistory.map((hist, idx) => (
+                                     <div key={hist.id || idx} className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0">
+                                         <div className="text-[10px] text-slate-400 mb-1">{new Date(hist.timestamp).toLocaleString()}</div>
+                                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{hist.summary}</p>
+                                     </div>
+                                 ))}
+                             </div>
+                         ) : matter.latestAnalysis ? (
+                             <AnalysisResultCard result={matter.latestAnalysis} />
+                         ) : null}
                      </div>
                  </div>
              </div>

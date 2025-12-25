@@ -4,7 +4,7 @@ import {
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
   Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff,
-  BrainCircuit, RefreshCw, Sparkles, Settings, ListTodo
+  BrainCircuit, RefreshCw, Sparkles, Settings, ListTodo, Circle, History, CheckCircle2
 } from 'lucide-react';
 import { analyzeWorkStatus } from '../services/aiAnalysisService';
 
@@ -248,15 +248,27 @@ const Dashboard: React.FC<Props> = ({
   const now = Date.now();
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  
+  // AI State
   const [aiResult, setAiResult] = useState<AIWorkStatusResult | null>(null);
+  const [aiHistory, setAiHistory] = useState<AIWorkStatusResult[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAiExpanded, setIsAiExpanded] = useState(true);
+  const [showAiHistory, setShowAiHistory] = useState(false);
 
   useEffect(() => {
       const saved = localStorage.getItem(DASHBOARD_AI_KEY);
       if (saved) {
           try {
-              setAiResult(JSON.parse(saved));
+              const parsed = JSON.parse(saved);
+              // Handle legacy single object storage by converting to array
+              if (Array.isArray(parsed)) {
+                  setAiHistory(parsed);
+                  if (parsed.length > 0) setAiResult(parsed[0]);
+              } else {
+                  setAiHistory([parsed]);
+                  setAiResult(parsed);
+              }
           } catch(e) { console.error(e); }
       }
   }, []);
@@ -274,13 +286,21 @@ const Dashboard: React.FC<Props> = ({
           return;
       }
       setIsAnalyzing(true);
+      setShowAiHistory(false);
       const res = await analyzeWorkStatus(matters);
       if (res) {
           setAiResult(res);
-          localStorage.setItem(DASHBOARD_AI_KEY, JSON.stringify(res));
+          const newHistory = [res, ...aiHistory].slice(0, 20); // Keep last 20 records
+          setAiHistory(newHistory);
+          localStorage.setItem(DASHBOARD_AI_KEY, JSON.stringify(newHistory));
           setIsAiExpanded(true);
       }
       setIsAnalyzing(false);
+  };
+
+  const handleRestoreHistory = (record: AIWorkStatusResult) => {
+      setAiResult(record);
+      setShowAiHistory(false);
   };
 
   const attentionGroups: AttentionMatterGroup[] = [];
@@ -390,46 +410,99 @@ const Dashboard: React.FC<Props> = ({
                         <h2 className="font-bold text-slate-800 dark:text-slate-100">AI 工作态势速览</h2>
                     </div>
                     <div className="flex items-center gap-2">
-                        {aiResult && <span className="text-[10px] text-slate-400 hidden sm:inline">更新于: {new Date(aiResult.timestamp).toLocaleTimeString()}</span>}
+                        {aiResult && !isAnalyzing && <span className="text-[10px] text-slate-400 hidden sm:inline">更新于: {new Date(aiResult.timestamp).toLocaleTimeString()}</span>}
+                        {aiHistory.length > 1 && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setShowAiHistory(!showAiHistory); setIsAiExpanded(true); }}
+                                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${showAiHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white/50 text-slate-500 border-transparent hover:bg-white hover:text-indigo-600'}`}
+                            >
+                                <History size={12} /> <span className="hidden sm:inline">历史记录</span>
+                            </button>
+                        )}
                         <button onClick={handleAnalyze} disabled={isAnalyzing} className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors disabled:opacity-50"><RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} /></button>
                         <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">{isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</button>
                     </div>
                 </div>
-                <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    {aiResult ? (
-                        <div className="p-5 space-y-6 text-sm">
-                             {/* Overview Grid */}
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 <div className="space-y-4">
-                                     <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4><p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p></div>
-                                     {aiResult.workload && <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.workload}</p></div>}
+                <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    
+                    {/* History View */}
+                    {showAiHistory && !isAnalyzing ? (
+                        <div className="p-4 bg-white/50 dark:bg-slate-900/50">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">历史分析记录 ({aiHistory.length})</h4>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {aiHistory.map((hist, idx) => (
+                                    <div key={hist.timestamp} 
+                                         onClick={() => handleRestoreHistory(hist)}
+                                         className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors flex justify-between items-center group"
+                                    >
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">{new Date(hist.timestamp).toLocaleString()}</span>
+                                                {idx === 0 && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Latest</span>}
+                                            </div>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{hist.overview}</p>
+                                        </div>
+                                        <ChevronDown size={14} className="text-slate-300 group-hover:text-indigo-500 -rotate-90" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : aiResult ? (
+                        <div className="p-0">
+                             {/* Overview Grid with Dividers */}
+                             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-indigo-100 dark:divide-indigo-900/50">
+                                 <div className="divide-y divide-indigo-100 dark:divide-indigo-900/50">
+                                     <div className="p-5">
+                                         <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
+                                         <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p>
+                                     </div>
+                                     {aiResult.workload && (
+                                         <div className="p-5">
+                                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4>
+                                             <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.workload}</p>
+                                         </div>
+                                     )}
                                  </div>
-                                 <div className="space-y-4">
-                                     <div>
+                                 <div className="divide-y divide-indigo-100 dark:divide-indigo-900/50">
+                                     <div className="p-5">
                                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻类型</h4>
                                          {aiResult.blockerTypes.length > 0 ? (
                                              <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium text-sm">{b.tag}</span><span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span></div>))}</div>
                                          ) : (<div className="text-slate-400 italic text-sm">暂无明显受阻归类</div>)}
                                      </div>
-                                     <div><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4><p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.updateRhythm}</p></div>
+                                     <div className="p-5">
+                                         <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4>
+                                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.updateRhythm}</p>
+                                     </div>
                                  </div>
                              </div>
                              
-                             {/* Separator */}
+                             {/* Action Plan Section - Styled */}
                              {aiResult.actionPlan && (
-                                <div className="border-t border-indigo-100 dark:border-indigo-900 pt-4 mt-2">
-                                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <div className="border-t border-indigo-100 dark:border-indigo-900 p-5 bg-white/40 dark:bg-white/5">
+                                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                                         <ListTodo size={16}/> 建议工作任务计划 (近期)
                                     </h4>
-                                    <div className="bg-white dark:bg-slate-900/50 rounded-lg p-4 border border-indigo-50 dark:border-indigo-900/30">
-                                        <p className="whitespace-pre-line text-slate-700 dark:text-slate-300 leading-7 font-medium">
-                                            {aiResult.actionPlan}
-                                        </p>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {aiResult.actionPlan.split('\n').filter(line => line.trim().length > 0).map((line, idx) => {
+                                            // Clean numbering if present (e.g. "1. Task") for cleaner look with icons
+                                            const cleanLine = line.replace(/^\d+[\.|,|、]\s*/, '');
+                                            return (
+                                                <div key={idx} className="flex items-start gap-3 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-indigo-900/30 p-3 rounded-lg shadow-sm hover:border-indigo-200 transition-colors group">
+                                                    <Circle size={16} className="mt-0.5 text-indigo-400 shrink-0 group-hover:text-indigo-600 transition-colors" />
+                                                    <p className="text-slate-700 dark:text-slate-200 text-sm leading-relaxed">{cleanLine}</p>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                              )}
 
-                             <div className="text-center pt-2 border-t border-indigo-50 dark:border-indigo-900/30"><span className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">✨ AI 辅助分析，仅用于工作态势参考</span></div>
+                             <div className="text-center py-2 bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-50 dark:border-indigo-900/30">
+                                 <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                                     <Sparkles size={10} /> AI 辅助分析，仅用于工作态势参考
+                                 </span>
+                             </div>
                         </div>
                     ) : (<div className="p-8 text-center text-slate-400 text-sm"><div className="mb-2">点击刷新按钮生成当前工作态势分析</div><div className="text-xs opacity-60">AI 将归纳所有事项状态，辅助您快速看清全局。</div></div>)}
                 </div>
