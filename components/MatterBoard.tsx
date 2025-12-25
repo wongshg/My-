@@ -662,8 +662,8 @@ const MatterBoard: React.FC<Props> = ({
             {/* Col 1: Stages */}
             <div style={{ width: col1Width }} className="bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden shrink-0">
                 <div className="h-full overflow-y-auto pt-16">
-                    <div className="sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur p-4 font-bold text-xs text-slate-400 uppercase tracking-wider flex justify-between border-b border-slate-200/50 dark:border-slate-800/50">
-                        阶段
+                    <div className="sticky top-0 z-10 h-14 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur px-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50">
+                        <span className="font-bold text-xs text-slate-400 uppercase tracking-wider">阶段</span>
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
                     </div>
                     <div className="px-2 space-y-1 pb-10 mt-2">
@@ -726,14 +726,14 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* Resizer 1 */}
             <div 
-                className="w-1 cursor-col-resize bg-transparent hover:bg-blue-400 transition-colors z-20 shrink-0"
+                className="w-1 cursor-col-resize bg-transparent hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors z-20 shrink-0"
                 onMouseDown={(e) => handleColResizeStart(e, 1)}
             />
 
             {/* Col 2: Tasks */}
             <div style={{ width: col2Width }} className="bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-hidden shrink-0">
                 <div className="h-full overflow-y-auto pt-16">
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur z-10">
+                    <div className="h-14 px-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur z-10">
                         <span className="font-bold text-slate-800 dark:text-slate-100 truncate">{activeStage?.title}</span>
                         <button onClick={addTask} disabled={!selectedStageId} className="text-xs bg-slate-900 text-white px-2 py-1 rounded"><Plus size={12}/></button>
                     </div>
@@ -748,17 +748,23 @@ const MatterBoard: React.FC<Props> = ({
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, 'TASK', task.id, activeStage.id)}
                                     onClick={() => setSelectedTaskId(task.id)} 
-                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all flex items-center justify-between
+                                    className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all flex items-start gap-2
                                         ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}
                                         ${dragItem?.id === task.id ? 'opacity-50 bg-blue-50' : ''}
                                     `}
                                 >
+                                    <div className="mt-1 shrink-0">
+                                        <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between mb-1 items-start">
-                                            <div className="flex items-center gap-2">
-                                                <GripVertical size={12} className="text-slate-300 dark:text-slate-600 cursor-move opacity-0 group-hover:opacity-100 transition-opacity -ml-1" />
-                                                <StatusBadge status={task.status} />
-                                            </div>
+                                        <div className="flex justify-between items-start mb-1">
+                                            <StatusBadge status={task.status} />
+                                            {!isEditing && (
+                                                <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+                                                    <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
+                                                </div>
+                                            )}
                                         </div>
                                         {isEditing ? (
                                             <input
@@ -771,18 +777,14 @@ const MatterBoard: React.FC<Props> = ({
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         ) : (
-                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 pr-2" onDoubleClick={(e) => { e.stopPropagation(); startEditingTask(task); }}>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200" onDoubleClick={(e) => { e.stopPropagation(); startEditingTask(task); }}>
                                                 {task.title}
                                             </div>
                                         )}
+                                        {task.description && (
+                                            <div className="text-xs text-slate-400 truncate mt-0.5">{task.description}</div>
+                                        )}
                                     </div>
-                                    
-                                    {!isEditing && (
-                                        <div className="hidden group-hover:flex items-center gap-1 shrink-0">
-                                            <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
-                                            <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
-                                        </div>
-                                    )}
                                 </div>
                             );
                         })}
@@ -792,7 +794,7 @@ const MatterBoard: React.FC<Props> = ({
 
             {/* Resizer 2 */}
             <div 
-                className="w-1 cursor-col-resize bg-transparent hover:bg-blue-400 transition-colors z-20 shrink-0"
+                className="w-1 cursor-col-resize bg-transparent hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors z-20 shrink-0"
                 onMouseDown={(e) => handleColResizeStart(e, 2)}
             />
 

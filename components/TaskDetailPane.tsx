@@ -375,6 +375,11 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                         {m.name}
                       </div>
 
+                      {/* No Files Text (Inline) */}
+                      {files.length === 0 && (!isRef || isTemplateMode) && (
+                          <span className="text-[10px] text-slate-300 italic mr-2 hidden group-hover:inline">暂无文件</span>
+                      )}
+
                       {/* Actions */}
                       {(!isRef || isTemplateMode) && (
                         <>
@@ -425,9 +430,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                               </div>
                           ))}
                       </div>
-                  )}
-                  {files.length === 0 && (!isRef || isTemplateMode) && (
-                      <div className="pl-7 text-[10px] text-slate-300 italic">暂无文件 (点击右上角上传)</div>
                   )}
                </div>
             )})}
