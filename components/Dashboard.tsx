@@ -303,6 +303,28 @@ const Dashboard: React.FC<Props> = ({
       setShowAiHistory(false);
   };
 
+  const handleToggleActionItem = (idx: number) => {
+      if (!aiResult) return;
+      const currentCompleted = aiResult.completedActionIndices || [];
+      let newCompleted;
+      
+      if (currentCompleted.includes(idx)) {
+          newCompleted = currentCompleted.filter(i => i !== idx);
+      } else {
+          newCompleted = [...currentCompleted, idx];
+      }
+
+      const updatedResult = { ...aiResult, completedActionIndices: newCompleted };
+      
+      // Update state
+      setAiResult(updatedResult);
+      
+      // Update history and storage
+      const updatedHistory = aiHistory.map(h => h.timestamp === updatedResult.timestamp ? updatedResult : h);
+      setAiHistory(updatedHistory);
+      localStorage.setItem(DASHBOARD_AI_KEY, JSON.stringify(updatedHistory));
+  };
+
   const attentionGroups: AttentionMatterGroup[] = [];
   inProgressMatters.forEach(m => {
     const ignored = m.dismissedAttentionIds || [];
@@ -423,7 +445,7 @@ const Dashboard: React.FC<Props> = ({
                         <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">{isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</button>
                     </div>
                 </div>
-                <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className={`transition-all duration-300 ease-in-out ${isAiExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     
                     {/* History View */}
                     {showAiHistory && !isAnalyzing ? (
@@ -449,48 +471,59 @@ const Dashboard: React.FC<Props> = ({
                         </div>
                     ) : aiResult ? (
                         <div className="p-0">
-                             {/* Overview Grid with Dividers */}
-                             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-indigo-100 dark:divide-indigo-900/50">
-                                 <div className="divide-y divide-indigo-100 dark:divide-indigo-900/50">
-                                     <div className="p-5">
-                                         <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
-                                         <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p>
-                                     </div>
-                                     {aiResult.workload && (
-                                         <div className="p-5">
-                                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">近期工作负荷观察</h4>
-                                             <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.workload}</p>
-                                         </div>
-                                     )}
+                             {/* Overview Grid - Refactored to 4 Cols Row on Large Screens */}
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-indigo-100 dark:divide-indigo-900/50">
+                                 <div className="p-4 lg:p-5">
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
+                                     <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p>
                                  </div>
-                                 <div className="divide-y divide-indigo-100 dark:divide-indigo-900/50">
-                                     <div className="p-5">
-                                         <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻类型</h4>
-                                         {aiResult.blockerTypes.length > 0 ? (
-                                             <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium text-sm">{b.tag}</span><span className="text-xs font-bold bg-white dark:bg-amber-900/40 px-2 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count} 项</span></div>))}</div>
-                                         ) : (<div className="text-slate-400 italic text-sm">暂无明显受阻归类</div>)}
-                                     </div>
-                                     <div className="p-5">
-                                         <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">判断更新情况</h4>
-                                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.updateRhythm}</p>
-                                     </div>
+                                 <div className="p-4 lg:p-5">
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">工作负荷</h4>
+                                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">
+                                         {aiResult.workload || "暂无显著负荷风险"}
+                                     </p>
+                                 </div>
+                                 <div className="p-4 lg:p-5">
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻</h4>
+                                     {aiResult.blockerTypes.length > 0 ? (
+                                         <div className="flex flex-col gap-2">{aiResult.blockerTypes.map((b, i) => (<div key={i} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 px-2 py-1.5 rounded border border-amber-100 dark:border-amber-900/30"><span className="text-amber-800 dark:text-amber-200 font-medium text-xs">{b.tag}</span><span className="text-[10px] font-bold bg-white dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full text-amber-600 dark:text-amber-400">{b.count}</span></div>))}</div>
+                                     ) : (<div className="text-slate-400 italic text-sm">暂无明显受阻归类</div>)}
+                                 </div>
+                                 <div className="p-4 lg:p-5">
+                                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">更新节奏</h4>
+                                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">{aiResult.updateRhythm}</p>
                                  </div>
                              </div>
                              
-                             {/* Action Plan Section - Styled */}
+                             {/* Action Plan Section - Interactive & Compact */}
                              {aiResult.actionPlan && (
-                                <div className="border-t border-indigo-100 dark:border-indigo-900 p-5 bg-white/40 dark:bg-white/5">
-                                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <div className="border-t border-indigo-100 dark:border-indigo-900 p-4 lg:px-5 bg-white/40 dark:bg-white/5">
+                                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                         <ListTodo size={16}/> 建议工作任务计划 (近期)
                                     </h4>
-                                    <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 gap-2">
                                         {aiResult.actionPlan.split('\n').filter(line => line.trim().length > 0).map((line, idx) => {
-                                            // Clean numbering if present (e.g. "1. Task") for cleaner look with icons
                                             const cleanLine = line.replace(/^\d+[\.|,|、]\s*/, '');
+                                            const isCompleted = (aiResult.completedActionIndices || []).includes(idx);
+                                            
                                             return (
-                                                <div key={idx} className="flex items-start gap-3 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-indigo-900/30 p-3 rounded-lg shadow-sm hover:border-indigo-200 transition-colors group">
-                                                    <Circle size={16} className="mt-0.5 text-indigo-400 shrink-0 group-hover:text-indigo-600 transition-colors" />
-                                                    <p className="text-slate-700 dark:text-slate-200 text-sm leading-relaxed">{cleanLine}</p>
+                                                <div 
+                                                    key={idx} 
+                                                    onClick={() => handleToggleActionItem(idx)}
+                                                    className={`
+                                                        flex items-start gap-3 p-2 rounded-lg transition-all cursor-pointer group border
+                                                        ${isCompleted 
+                                                            ? 'bg-slate-50 dark:bg-slate-800/30 border-transparent opacity-60' 
+                                                            : 'bg-white dark:bg-slate-900 border-indigo-50 dark:border-indigo-900/30 hover:border-indigo-200 shadow-sm hover:shadow-md'
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className={`mt-0.5 shrink-0 transition-colors ${isCompleted ? 'text-emerald-500' : 'text-indigo-300 group-hover:text-indigo-500'}`}>
+                                                        {isCompleted ? <CheckCircle2 size={16} className="fill-emerald-100 dark:fill-emerald-900"/> : <Circle size={16} />}
+                                                    </div>
+                                                    <p className={`text-sm leading-snug transition-all ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                        {cleanLine}
+                                                    </p>
                                                 </div>
                                             );
                                         })}

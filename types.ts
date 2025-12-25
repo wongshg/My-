@@ -117,5 +117,6 @@ export interface AIWorkStatusResult {
   updateRhythm: string;    // 3. 判断更新节奏提示
   workload?: string;       // 4. 工作负荷感知 (Optional)
   actionPlan: string;      // 5. [NEW] 建议工作计划
+  completedActionIndices?: number[]; // 6. [NEW] Interactive state for action plan
   timestamp: number;
 }

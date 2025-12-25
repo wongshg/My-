@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Matter, TaskStatus, JudgmentRecord, AIAnalysisResult } from '../types';
-import { Send, Clock, GitCommit, PlayCircle, PauseCircle, AlertCircle, HelpCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Copy, History, Tag, RefreshCw, X } from 'lucide-react';
+import { Send, Clock, GitCommit, PlayCircle, PauseCircle, AlertCircle, HelpCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Copy, History, Tag, RefreshCw, X, ArrowLeft } from 'lucide-react';
 import { analyzeJudgmentTimeline } from '../services/aiAnalysisService';
 
 interface Props {
@@ -16,7 +16,10 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   // AI State
   const [isAiPanelExpanded, setIsAiPanelExpanded] = useState(true); 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  
+  // History Mode State
+  const [isHistoryMode, setIsHistoryMode] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<AIAnalysisResult | null>(null);
 
   useEffect(() => {
       if (matter.latestAnalysis) {
@@ -66,7 +69,9 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
     }
     setIsAiPanelExpanded(true);
     setIsAnalyzing(true);
-    setShowHistory(false);
+    setIsHistoryMode(false); // Switch to latest view
+    setSelectedHistoryItem(null);
+
     const result = await analyzeJudgmentTimeline(matter, allMatters);
     if (result) {
         const resultWithId = { ...result, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
@@ -91,8 +96,13 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
       return new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
-  const AnalysisResultCard = ({ result }: { result: AIAnalysisResult }) => (
+  const AnalysisResultCard = ({ result, isHistorical = false }: { result: AIAnalysisResult, isHistorical?: boolean }) => (
       <div className="space-y-4 text-sm animate-fadeIn">
+          {isHistorical && (
+              <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-1 rounded mb-2 border border-indigo-100 dark:border-indigo-800 inline-block">
+                  历史记录: {new Date(result.timestamp).toLocaleString()}
+              </div>
+          )}
           <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">当前判断摘要</h4>
               <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm">{result.summary}</p>
@@ -104,7 +114,9 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
           {result.blockerTags.length > 0 && (
               <div className="flex flex-wrap gap-2">{result.blockerTags.map((tag, i) => (<span key={i} className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800">{tag}</span>))}</div>
           )}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">AI 辅助分析 • 仅供参考</div>
+          {!isHistorical && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 text-center">AI 辅助分析 • 仅供参考</div>
+          )}
       </div>
   );
 
@@ -118,14 +130,13 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
             判断时间线
         </h2>
         
-        {!matter.latestAnalysis && (
+        {(!matter.latestAnalysis && !isAnalyzing) && (
             <button 
                 onClick={handleRunAnalysis}
-                disabled={isAnalyzing}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors shadow-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50`}
             >
-                <Sparkles size={12} className={isAnalyzing ? 'animate-pulse' : ''} />
-                {isAnalyzing ? '分析中...' : 'AI 辅助分析'}
+                <Sparkles size={12} />
+                AI 辅助分析
             </button>
         )}
       </div>
@@ -140,21 +151,36 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                      <div className="flex items-center gap-2">
                          <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
                          <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">智能归纳与对照</span>
-                         {matter.latestAnalysis && !isAnalyzing && (<span className="text-[10px] text-slate-400 ml-1">{new Date(matter.latestAnalysis.timestamp).toLocaleTimeString()}</span>)}
+                         {matter.latestAnalysis && !isAnalyzing && !isHistoryMode && (<span className="text-[10px] text-slate-400 ml-1">{new Date(matter.latestAnalysis.timestamp).toLocaleTimeString()}</span>)}
                      </div>
                      <div className="flex items-center gap-2">
-                         {matter.analysisHistory && matter.analysisHistory.length > 1 && (
+                         {/* Toggle History Button */}
+                         {matter.analysisHistory && matter.analysisHistory.length > 0 && (
                              <button 
-                                 onClick={(e) => { e.stopPropagation(); setIsAiPanelExpanded(true); setShowHistory(!showHistory); }} 
-                                 className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${showHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white/50 text-slate-500 border-transparent hover:bg-white hover:text-indigo-600'}`}
+                                 onClick={(e) => { 
+                                     e.stopPropagation(); 
+                                     setIsHistoryMode(!isHistoryMode); 
+                                     setIsAiPanelExpanded(true); 
+                                     setSelectedHistoryItem(null); 
+                                 }} 
+                                 className={`text-[10px] flex items-center gap-1 px-2 py-1 rounded border transition-colors ${isHistoryMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white/50 text-indigo-600 border-indigo-100 hover:bg-white'}`}
                              >
-                                 {showHistory ? '返回最新' : '历史记录'}
+                                 <History size={10} /> {isHistoryMode ? '返回最新' : '历史记录'}
                              </button>
                          )}
-                         <button onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }} disabled={isAnalyzing} className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"><RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/></button>
+                         
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); handleRunAnalysis(); }} 
+                            disabled={isAnalyzing} 
+                            className="p-1 text-indigo-500 hover:bg-indigo-100 rounded"
+                            title="重新分析"
+                         >
+                             <RefreshCw size={12} className={isAnalyzing ? 'animate-spin' : ''}/>
+                         </button>
                          <div className="text-indigo-400">{isAiPanelExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}</div>
                      </div>
                  </div>
+                 
                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isAiPanelExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                      <div className="p-4">
                          {isAnalyzing ? (
@@ -162,17 +188,33 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
                                  <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
                                  <span className="text-xs">正在分析时间线数据...</span>
                              </div>
-                         ) : showHistory && matter.analysisHistory ? (
-                             <div className="space-y-4 max-h-[300px] overflow-y-auto">
-                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">历史分析记录 ({matter.analysisHistory.length})</h4>
-                                 {matter.analysisHistory.map((hist, idx) => (
-                                     <div key={hist.id || idx} className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0">
-                                         <div className="text-[10px] text-slate-400 mb-1">{new Date(hist.timestamp).toLocaleString()}</div>
-                                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">{hist.summary}</p>
-                                     </div>
-                                 ))}
-                             </div>
+                         ) : isHistoryMode ? (
+                             // HISTORY MODE VIEW
+                             selectedHistoryItem ? (
+                                 <div>
+                                     <button onClick={() => setSelectedHistoryItem(null)} className="mb-2 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"><ArrowLeft size={10} /> 返回列表</button>
+                                     <AnalysisResultCard result={selectedHistoryItem} isHistorical={true} />
+                                 </div>
+                             ) : (
+                                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                     <div className="text-xs text-slate-400 mb-2 px-1">选择一条历史记录查看:</div>
+                                     {matter.analysisHistory?.map((hist, idx) => (
+                                         <div 
+                                            key={hist.id || idx} 
+                                            onClick={() => setSelectedHistoryItem(hist)}
+                                            className="p-3 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors group"
+                                         >
+                                             <div className="flex justify-between items-start mb-1">
+                                                 <span className="text-[10px] font-mono text-slate-500">{new Date(hist.timestamp).toLocaleString()}</span>
+                                                 <ChevronDown size={12} className="text-slate-300 group-hover:text-indigo-400 -rotate-90" />
+                                             </div>
+                                             <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2">{hist.summary}</p>
+                                         </div>
+                                     ))}
+                                 </div>
+                             )
                          ) : matter.latestAnalysis ? (
+                             // LATEST VIEW
                              <AnalysisResultCard result={matter.latestAnalysis} />
                          ) : null}
                      </div>
