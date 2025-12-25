@@ -109,7 +109,7 @@ const JudgmentTimeline: React.FC<Props> = ({ matter, allMatters, onUpdate }) => 
   );
 
   return (
-    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 md:rounded-lg min-h-full">
+    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-900/50 md:rounded-lg h-full min-h-[calc(100vh-4rem)]">
       
       {/* Header - Sticky */}
       <div className="sticky top-0 z-10 p-4 flex items-center justify-between border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all">

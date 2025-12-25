@@ -124,41 +124,69 @@ export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatus
         return null;
     }
 
-    // Filter Input: Only Active Matters, stripped to essentials
+    // Filter Input: Active Matters with extended context for Action Plan
     const activeMatters = matters.filter(m => !m.archived).map(m => {
         // Find latest judgment
         const latestJ = m.judgmentTimeline.length > 0 ? m.judgmentTimeline[0] : null;
         
+        // Find tasks with updates in last 7 days or upcoming due dates
+        const relevantTasks = [];
+        const now = Date.now();
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+        m.stages.forEach(s => {
+            s.tasks.forEach(t => {
+                if (t.status === TaskStatus.COMPLETED || t.status === TaskStatus.SKIPPED) return;
+                
+                const hasRecentUpdate = t.statusUpdates && t.statusUpdates.some(u => (now - u.timestamp) < oneWeek);
+                const isDueSoon = t.dueDate && (t.dueDate - now) < oneWeek;
+                const isBlocked = t.status === TaskStatus.BLOCKED;
+
+                if (hasRecentUpdate || isDueSoon || isBlocked) {
+                    relevantTasks.push({
+                        title: t.title,
+                        status: t.status,
+                        dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : null,
+                        recentUpdate: t.statusUpdates?.[0]?.content || null
+                    });
+                }
+            });
+        });
+
         return {
             id: m.id,
             title: m.title,
-            currentStatus: m.overallStatus || TaskStatus.PENDING, // Use overall status derived from judgments
+            currentStatus: m.overallStatus || TaskStatus.PENDING,
             lastJudgmentContent: latestJ?.content || "暂无判断记录",
             lastJudgmentTime: latestJ ? new Date(latestJ.timestamp).toISOString().split('T')[0] : "无",
-            lastUpdatedTime: new Date(m.lastUpdated).toISOString().split('T')[0]
+            activeTasks: relevantTasks
         };
     });
 
     if (activeMatters.length === 0) return null;
 
     const systemPrompt = `
-      你是一个法务运营工作台的态势感知 AI。你的任务是根据所有进行中事项的状态和判断记录，生成一份【工作态势速览】。
+      你是一个法务运营工作台的态势感知 AI。你的任务是根据所有进行中事项的状态、判断记录及具体任务进展，生成一份【工作态势速览】。
 
       ### 必须遵守的原则
-      1. **仅描述事实与态势**：归纳“现在是什么情况”，绝不提供“应该怎么做”的建议。
-      2. **不越界**：不排序优先级，不评价单个事项的好坏。
-      3. **客观语言**：禁止使用“建议、应该、需要、尽快”等祈使或建议性词汇。
-      4. **输出格式**：纯 JSON，无 Markdown 标记。
+      1. **仅描述事实与态势**：归纳“现在是什么情况”。
+      2. **输出格式**：纯 JSON，无 Markdown 标记。
 
       ### 输出字段要求
       1. **overview** (string): 整体工作态势概览。用一句话描述分布（如：X个进行中，Y个受阻，Z个完成）。
       2. **blockerTypes** (array): 主要受阻类型归纳。分析状态为 BLOCKED 或包含受阻描述的事项，归纳出 1-3 个卡点类型标签。
          格式: [{ "tag": "外部审批等待", "count": 2 }]
-      3. **updateRhythm** (string): 判断更新节奏提示。基于 lastJudgmentTime，客观指出是否存在长时间（如超过7天）未更新判断的事项。若无则提示节奏稳定。
-      4. **workload** (string): (可选) 工作负荷感知。基于受阻数量和更新频率的直观描述（如“受阻事项较多，需关注推进难度”），保持中性。
+      3. **updateRhythm** (string): 判断更新节奏提示。基于 lastJudgmentTime，客观指出是否存在长时间（如超过7天）未更新判断的事项。
+      4. **workload** (string): (可选) 工作负荷感知。
+      5. **actionPlan** (string): [重要] 建议工作计划。
+         - 请分析所有事项的 'lastJudgmentContent' 和 'activeTasks' 中的 'recentUpdate'。
+         - 敏锐捕捉文本中提到的时间节点（如“下周一”、“3天后”、“预计15号”）、截止日期或明确的下一步动作。
+         - 将这些分散的信息整理成一个简洁的、无序列表形式的纯文本计划（用换行符分隔，不要Markdown列表符号）。
+         - 如果没有明确的时间点，则列出急需处理的受阻项。
+         - 示例格式：“1. [事项A] 跟进外部审批结果（提及预计下周一反馈）\n2. [事项B] 提交公示材料（即将截止）”
 
       ### 输入数据示例
-      [ { title, currentStatus, lastJudgmentContent, lastJudgmentTime } ... ]
+      [ { title, currentStatus, lastJudgmentContent, activeTasks: [{title, status, recentUpdate, dueDate}] } ... ]
     `;
 
     try {
