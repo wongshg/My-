@@ -3,9 +3,10 @@ import { Matter, Template, TaskStatus, Task, Stage, JudgmentRecord } from './typ
 import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText } from 'lucide-react';
 import JSZip from 'jszip';
 import { getFile, saveFile } from './services/storage';
+import { generateTemplateFromText } from './services/aiAnalysisService';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -159,6 +160,60 @@ const checkDueTasks = (matters: Matter[]) => {
 
 // --- Standalone Components ---
 
+const AITemplateGeneratorModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (t: Template) => void;
+}> = ({ isOpen, onClose, onConfirm }) => {
+    const [text, setText] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleGenerate = async () => {
+        if (!text.trim()) return;
+        setIsGenerating(true);
+        const template = await generateTemplateFromText(text);
+        setIsGenerating(false);
+        if (template) {
+            // Assign a real ID
+            template.id = uuid();
+            onConfirm(template);
+            onClose();
+            setText('');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                        <Sparkles size={20} /> AI 智能生成模板
+                    </h3>
+                    <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">
+                    粘贴您的工作总结、流程说明或操作手册片段，AI 将自动分析并生成结构化的事项模板。
+                </p>
+                <textarea 
+                    className="w-full h-40 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                    placeholder="例如：完成一家公司注销通常需要先进行内部决议，然后成立清算组，发布公告45天。之后清理资产，最后去工商局注销..."
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                />
+                <button 
+                    onClick={handleGenerate}
+                    disabled={!text.trim() || isGenerating}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                    {isGenerating ? <><Sparkles size={16} className="animate-spin"/> 分析生成中...</> : '开始生成'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const TemplateManagerModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -166,7 +221,8 @@ const TemplateManagerModal: React.FC<{
     onCreate: () => void;
     onEdit: (t: Template) => void;
     onDelete: (id: string) => void;
-}> = ({ isOpen, onClose, templates, onCreate, onEdit, onDelete }) => {
+    onAIImport: () => void;
+}> = ({ isOpen, onClose, templates, onCreate, onEdit, onDelete, onAIImport }) => {
     if (!isOpen) return null;
 
     return (
@@ -184,9 +240,14 @@ const TemplateManagerModal: React.FC<{
                     <div className="space-y-3">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">已录入模板 (全部)</h3>
-                            <button onClick={onCreate} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                                <Plus size={12} /> 新建空白模板
-                            </button>
+                            <div className="flex gap-3">
+                                <button onClick={onAIImport} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium">
+                                    <Sparkles size={12} /> AI 导入
+                                </button>
+                                <button onClick={onCreate} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                    <Plus size={12} /> 新建空白
+                                </button>
+                            </div>
                         </div>
 
                         {templates.length === 0 && (
@@ -255,6 +316,7 @@ const App: React.FC = () => {
   // Modals
   const [isNewMatterModalOpen, setIsNewMatterModalOpen] = useState(false);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [isAIGenOpen, setIsAIGenOpen] = useState(false);
   
   // Save Template Modal State
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
@@ -384,7 +446,12 @@ const App: React.FC = () => {
                       m.stages.forEach((s: Stage) => {
                           s.tasks.forEach((t: Task) => {
                               t.materials.forEach(mat => {
+                                  // Legacy
                                   if (mat.fileId) fileIds.add(mat.fileId);
+                                  // New
+                                  if (mat.files) {
+                                      mat.files.forEach(f => fileIds.add(f.id));
+                                  }
                               });
                           });
                       });
@@ -441,15 +508,8 @@ const App: React.FC = () => {
               assetsFolder.forEach((relativePath, zipEntry) => {
                   filePromises.push(async function() {
                       const blob = await zipEntry.async("blob");
-                      // The filename in assets folder is the ID
                       const fileId = zipEntry.name.split('/').pop(); 
                       if (fileId) {
-                         // We need to create a File object to store properly with name/type if possible, 
-                         // but storage.ts just stores Blob/File.
-                         // However, the original File object had name/type properties. 
-                         // `blob` from zip might lose original mime type if not stored carefully, 
-                         // but we only store the binary. The metadata (name/type) is in the JSON (Material object).
-                         // So storing the blob under the ID is sufficient.
                          await saveFile(fileId, blob as File); 
                          fileCount++;
                       }
@@ -502,10 +562,7 @@ const App: React.FC = () => {
         statusUpdates: [],
         materials: t.materials.map(m => ({
             ...m, 
-            isReady: !!m.fileId, // Keep ready if it has a file
-            // Make sure materials in templates are marked as REFERENCE by default if they have files?
-            // Or keep original category? 
-            // If I save a matter as template, the existing deliverables become references for the new template.
+            isReady: !!m.fileId || (m.files && m.files.length > 0),
             category: 'REFERENCE' as const
         }))
       }))
@@ -564,7 +621,7 @@ const App: React.FC = () => {
               statusUpdates: [],
               materials: t.materials.map(mat => ({
                   ...mat,
-                  isReady: !!mat.fileId, // Keep file state if file exists
+                  isReady: !!mat.fileId || (mat.files && mat.files.length > 0), 
               }))
           }))
       }));
@@ -574,7 +631,7 @@ const App: React.FC = () => {
               return {
                   ...t,
                   name: m.title, // Matter Title -> Template Name
-                  description: m.type, // Matter Type -> Template Description (We mapped this in handleEditTemplate)
+                  description: m.type, // Matter Type -> Template Description
                   stages: cleanStages
               };
           }
@@ -621,6 +678,15 @@ const App: React.FC = () => {
     const updated = templates.filter(t => t.id !== templateId);
     saveTemplates(updated);
     setTemplates(updated);
+  };
+
+  const handleAITemplateCreated = (t: Template) => {
+      const updatedTemplates = [...templates, t];
+      saveTemplates(updatedTemplates);
+      setTemplates(updatedTemplates);
+      alert("AI 模板生成成功！");
+      // Optional: Auto open edit mode
+      // handleEditTemplate(t);
   };
 
   // --- Views ---
@@ -894,6 +960,13 @@ const App: React.FC = () => {
          onCreate={createBlankTemplate}
          onEdit={handleEditTemplate}
          onDelete={handleDeleteTemplate}
+         onAIImport={() => setIsAIGenOpen(true)}
+      />
+
+      <AITemplateGeneratorModal 
+         isOpen={isAIGenOpen}
+         onClose={() => setIsAIGenOpen(false)}
+         onConfirm={handleAITemplateCreated}
       />
       
       {/* Save Template Modal Overlay */}

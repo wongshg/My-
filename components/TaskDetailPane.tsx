@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Task, TaskStatus, Material, StatusUpdate } from '../types';
+import { Task, TaskStatus, Material, StatusUpdate, AttachedFile } from '../types';
 import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package, BookOpen } from 'lucide-react';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
 
@@ -105,7 +105,6 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       
       const ts = new Date(val).getTime();
 
-      // Validation
       if (matterDueDate && ts > matterDueDate) {
           if(!confirm("该任务的截止时间晚于整个事项的截止时间，确定要设置吗？")) {
               return;
@@ -129,7 +128,8 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
         id: Math.random().toString(36).substr(2, 9), 
         name: newMaterialName.trim(), 
         category: addingCategory,
-        isReady: false 
+        isReady: false,
+        files: []
       };
       onUpdate({ ...task, materials: [...task.materials, newMat], lastUpdated: Date.now() });
     }
@@ -141,39 +141,53 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     onUpdate({ ...task, materials: task.materials.filter(m => m.id !== mat.id), lastUpdated: Date.now() });
   };
 
-  // --- File Handling ---
+  // --- File Handling (Multi-file Support) ---
 
   const processFile = async (matId: string, file: File) => {
       const fileId = Math.random().toString(36).substr(2, 9);
       await saveFile(fileId, file);
 
-      const newMaterials = task.materials.map(m => 
-          m.id === matId ? { 
-              ...m, 
-              fileId: fileId, 
-              fileName: file.name, 
-              fileType: file.type, 
-              fileSize: file.size,
-              isReady: true // Auto mark as ready when uploaded
-          } : m
-      );
+      const attachedFile: AttachedFile = {
+          id: fileId,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          timestamp: Date.now()
+      };
+
+      const newMaterials = task.materials.map(m => {
+          if (m.id === matId) {
+              const currentFiles = m.files || [];
+              return { 
+                  ...m, 
+                  files: [...currentFiles, attachedFile],
+                  isReady: true 
+              };
+          }
+          return m;
+      });
       onUpdate({ ...task, materials: newMaterials, lastUpdated: Date.now() });
   };
 
   const handleFileUpload = async (matId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      await processFile(matId, file);
+      const files = e.target.files;
+      if (!files) return;
+      
+      // Process all selected files
+      for (let i = 0; i < files.length; i++) {
+          await processFile(matId, files[i]);
+      }
+      // Reset input
+      e.target.value = '';
   };
 
-  const handleFileDownload = async (mat: Material) => {
-      if (!mat.fileId) return;
-      const file = await getFile(mat.fileId);
+  const handleFileDownload = async (fileId: string, fileName: string) => {
+      const file = await getFile(fileId);
       if (file) {
           const url = URL.createObjectURL(file);
           const a = document.createElement('a');
           a.href = url;
-          a.download = mat.fileName || 'download';
+          a.download = fileName || 'download';
           a.click();
           URL.revokeObjectURL(url);
       } else {
@@ -181,10 +195,23 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
       }
   };
 
-  const deleteFileAttachment = async (matId: string, fileId?: string) => {
-      const newMaterials = task.materials.map(m => 
-          m.id === matId ? { ...m, fileId: undefined, fileName: undefined, fileType: undefined, fileSize: undefined } : m
-      );
+  const deleteAttachedFile = async (matId: string, fileId: string) => {
+      const newMaterials = task.materials.map(m => {
+          if (m.id === matId) {
+              const newFiles = (m.files || []).filter(f => f.id !== fileId);
+              // Also check if we need to clear legacy fileId if user deletes the legacy file
+              const isLegacy = m.fileId === fileId;
+              return { 
+                  ...m, 
+                  files: newFiles,
+                  // If legacy was deleted, clear it.
+                  fileId: isLegacy ? undefined : m.fileId,
+                  // If no files left, maybe set not ready? Optional.
+                  isReady: newFiles.length > 0 || (!!m.fileId && !isLegacy)
+              };
+          }
+          return m;
+      });
       onUpdate({ ...task, materials: newMaterials, lastUpdated: Date.now() });
   };
 
@@ -214,8 +241,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
     e.stopPropagation();
     setDragActiveId(null);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        await processFile(matId, e.dataTransfer.files[0]);
+    if (e.dataTransfer.files) {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+            await processFile(matId, e.dataTransfer.files[i]);
+        }
     }
   };
 
@@ -287,7 +316,20 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
       return (
           <div className="space-y-2 mt-2">
-            {list.map(m => (
+            {list.map(m => {
+               // Merge legacy file into files array for display if needed
+               const files = m.files ? [...m.files] : [];
+               if (m.fileId && !files.some(f => f.id === m.fileId)) {
+                   files.push({
+                       id: m.fileId,
+                       name: m.fileName || 'Legacy File',
+                       type: m.fileType,
+                       size: m.fileSize,
+                       timestamp: 0 // Unknown
+                   });
+               }
+
+               return (
                <div 
                   key={m.id}
                   onDragEnter={(e) => {
@@ -300,82 +342,95 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   onDrop={(e) => {
                       if (!isRef || isTemplateMode) handleDrop(e, m.id)
                   }}
-                  className={`group flex items-center gap-3 p-3 rounded-lg border transition-all relative ${
+                  className={`group rounded-lg border transition-all relative p-2.5 ${
                       dragActiveId === m.id 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 border-dashed z-10' 
                       : 'border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
                   }`}
                >
                   {dragActiveId === m.id && (
-                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 rounded-lg pointer-events-none">
+                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 rounded-lg pointer-events-none z-20">
                          <span className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2"><Upload size={16}/> 松开以上传</span>
                      </div>
                   )}
 
-                  {/* Icon Button */}
-                  {isRef ? (
-                      <div className="shrink-0 p-0.5 text-blue-500 dark:text-blue-400 opacity-80">
-                          <BookOpen size={20} />
-                      </div>
-                  ) : (
-                      <button 
-                        onClick={() => toggleMaterial(m.id)}
-                        className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
-                      >
-                        {m.isReady ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                      </button>
-                  )}
-                  
-                  <div className="flex-1 min-w-0">
-                      <div className={`text-sm ${m.isReady && !isRef ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                  {/* Header Row: Icon + Name + Upload Button + Delete Button */}
+                  <div className="flex items-center gap-2 mb-1">
+                      {/* Icon */}
+                      {isRef ? (
+                          <div className="shrink-0 text-blue-500 dark:text-blue-400 opacity-80">
+                              <BookOpen size={16} />
+                          </div>
+                      ) : (
+                          <button 
+                            onClick={() => toggleMaterial(m.id)}
+                            className={`transition-colors shrink-0 ${m.isReady ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
+                          >
+                            {m.isReady ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                          </button>
+                      )}
+                      
+                      {/* Name */}
+                      <div className={`text-sm font-medium flex-1 truncate ${m.isReady && !isRef ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>
                         {m.name}
                       </div>
-                      
-                      <div className="mt-1 flex items-center gap-2 h-5">
-                          {m.fileName ? (
-                              <>
-                                <button 
-                                  onClick={() => handleFileDownload(m)}
-                                  className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline max-w-[150px] truncate"
-                                  title="点击下载"
-                                >
-                                    <FileIcon size={10} /> {m.fileName}
-                                </button>
-                                {(!isRef || isTemplateMode) && (
-                                    <button 
-                                    onClick={() => deleteFileAttachment(m.id, m.fileId)}
-                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="删除文件"
-                                    >
-                                    <X size={10} />
-                                    </button>
-                                )}
-                              </>
-                          ) : (
-                              // Allow upload if: Deliverable OR (Reference AND TemplateMode)
-                              (!isRef || isTemplateMode) ? (
-                                <label className="cursor-pointer text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 transition-colors">
-                                    <Upload size={10} /> 上传文件 (或拖拽至此)
-                                    <input 
-                                        type="file" 
-                                        className="hidden" 
-                                        onChange={(e) => handleFileUpload(m.id, e)}
-                                    />
-                                </label>
-                              ) : (
-                                <span className="text-[10px] text-slate-300 italic">暂无文件</span>
-                              )
-                          )}
-                      </div>
+
+                      {/* Actions */}
+                      {(!isRef || isTemplateMode) && (
+                        <>
+                            <label className="cursor-pointer text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-white dark:hover:bg-slate-800" title="上传文件">
+                                <Upload size={14} />
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    className="hidden" 
+                                    onChange={(e) => handleFileUpload(m.id, e)}
+                                />
+                            </label>
+                            <button 
+                                onClick={() => deleteMaterial(m)} 
+                                className="text-slate-300 hover:text-red-400 p-1 rounded hover:bg-white dark:hover:bg-slate-800"
+                                title="删除此项"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </>
+                      )}
                   </div>
 
-                  {(!isRef || isTemplateMode) && (
-                      <button onClick={() => deleteMaterial(m)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 shrink-0">
-                        <Trash2 size={16} />
-                      </button>
+                  {/* File List */}
+                  {files.length > 0 && (
+                      <div className="pl-6 space-y-1 mt-1">
+                          {files.map(file => (
+                              <div key={file.id} className="flex items-center justify-between group/file text-xs bg-slate-50 dark:bg-slate-800/50 rounded px-2 py-1 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                  <button 
+                                      onClick={() => handleFileDownload(file.id, file.name)}
+                                      className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[70%]"
+                                      title={file.name}
+                                  >
+                                      <FileIcon size={10} /> {file.name}
+                                  </button>
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                      {file.timestamp > 0 && <span>{new Date(file.timestamp).toLocaleDateString()}</span>}
+                                      {(!isRef || isTemplateMode) && (
+                                          <button 
+                                              onClick={() => deleteAttachedFile(m.id, file.id)}
+                                              className="hover:text-red-500 hidden group-hover/file:block"
+                                              title="删除文件"
+                                          >
+                                              <X size={10} />
+                                          </button>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+                  {files.length === 0 && (!isRef || isTemplateMode) && (
+                      <div className="pl-7 text-[10px] text-slate-300 italic">暂无文件 (点击右上角上传)</div>
                   )}
                </div>
-             ))}
+            )})}
           </div>
       );
   }

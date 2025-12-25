@@ -9,17 +9,27 @@ export enum TaskStatus {
   OTHER = 'OTHER'            // 其他 (Custom)
 }
 
+export interface AttachedFile {
+  id: string;
+  name: string;
+  type?: string;
+  size?: number;
+  timestamp: number;
+}
+
 export interface Material {
   id: string;
   name: string;
   category?: 'REFERENCE' | 'DELIVERABLE'; // REFERENCE: Template files; DELIVERABLE: Work outputs
   isReady: boolean;
   note?: string;
-  // File metadata
+  // Legacy single file fields (deprecated but kept for compatibility)
   fileId?: string;
   fileName?: string;
   fileType?: string;
   fileSize?: number;
+  // New multi-file support
+  files?: AttachedFile[];
 }
 
 export interface StatusUpdate {

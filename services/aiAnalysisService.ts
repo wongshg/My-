@@ -1,4 +1,4 @@
-import { Matter, AIAnalysisResult, AIWorkStatusResult, TaskStatus } from "../types";
+import { Matter, AIAnalysisResult, AIWorkStatusResult, TaskStatus, Template } from "../types";
 
 const SETTINGS_KEY = 'opus_settings_v1';
 const DEFAULT_API_HOST = "https://api.chatanywhere.tech";
@@ -196,6 +196,82 @@ export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatus
     } catch (error) {
         console.error("Dashboard AI Analysis Failed:", error);
         alert("AI 分析失败 (Error " + error + ")。请检查 API Key 配置或网络。");
+        return null;
+    }
+};
+
+export const generateTemplateFromText = async (text: string): Promise<Template | null> => {
+    const { apiKey, apiHost } = getSettings();
+    if (!apiKey) {
+        alert("请先配置 API Key。");
+        return null;
+    }
+
+    const systemPrompt = `
+      你是一个流程专家。用户的输入是一段工作说明、总结或流程描述。
+      你需要根据这段文本，提取并生成一个结构化的工作模板。
+      
+      输出必须是符合以下 TypeScript 接口的 JSON 数据（不要 Markdown）：
+      
+      interface Template {
+        name: string; // 模板名称，简短有力
+        description: string; // 适用场景说明
+        stages: {
+          id: string; // 使用随机字符串，如 "s1"
+          title: string; // 阶段名称
+          tasks: {
+             id: string; // 使用随机字符串，如 "t1"
+             title: string; // 任务名称
+             description?: string; // 任务描述或指引
+             status: "PENDING";
+             statusNote: "";
+             lastUpdated: number; // 当前时间戳
+             materials: { // 如果文本中提到了需要的文件或产物
+                id: string;
+                name: string;
+                isReady: false;
+                category: "DELIVERABLE"; // 默认为产物
+             }[];
+          }[];
+        }[];
+      }
+      
+      注意：
+      1. 自动推断合理的阶段划分。
+      2. 任务名要具体。
+      3. status 固定为 "PENDING"。
+      4. 如果提到具体文件，加入 materials。
+    `;
+
+    try {
+        const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
+        const response = await fetch(`${cleanHost}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text }
+                ],
+                temperature: 0.5
+            })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+
+        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson) as Template;
+
+    } catch (e) {
+        console.error("Template Generation Failed:", e);
+        alert("模板生成失败");
         return null;
     }
 };

@@ -42,10 +42,16 @@ const MatterBoard: React.FC<Props> = ({
   const [selectedStageId, setSelectedStageId] = useState<string | null>(matter.stages[0]?.id || null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
+  // Resizable Columns State
+  const [col1Width, setCol1Width] = useState(256); // Default 256px (w-64)
+  const [col2Width, setCol2Width] = useState(320); // Default 320px (w-80)
+  const [isResizingCol1, setIsResizingCol1] = useState(false);
+  const [isResizingCol2, setIsResizingCol2] = useState(false);
+
   // Mobile Split State (Top Panel Height in vh)
   const [topPanelHeightVh, setTopPanelHeightVh] = useState(40); // Default 40vh for top panel
   const resizeRef = useRef<HTMLDivElement>(null);
-  const [isResizing, setIsResizing] = useState(false);
+  const [isResizingMobile, setIsResizingMobile] = useState(false);
 
   // Title & Description Editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -102,21 +108,57 @@ const MatterBoard: React.FC<Props> = ({
     }
   }, [isAddingStage]);
 
-  // Resize Logic for Mobile (Touch)
-  const handleResizeStart = (e: React.TouchEvent | React.MouseEvent) => {
-      setIsResizing(true);
+  // --- Column Resizing Logic ---
+  const handleColResizeStart = (e: React.MouseEvent, col: 1 | 2) => {
+      e.preventDefault();
+      if (col === 1) setIsResizingCol1(true);
+      if (col === 2) setIsResizingCol2(true);
+      document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
   };
 
-  const handleResizeMove = (e: React.TouchEvent | React.MouseEvent) => {
-      if (!isResizing) return;
-      
-      let clientY;
-      if ('touches' in e) {
-          clientY = e.touches[0].clientY;
-      } else {
-          clientY = e.clientY;
+  useEffect(() => {
+      const handleMouseMove = (e: MouseEvent) => {
+          if (isResizingCol1) {
+              const newWidth = e.clientX;
+              if (newWidth > 150 && newWidth < 600) setCol1Width(newWidth);
+          }
+          if (isResizingCol2) {
+              const newWidth = e.clientX - col1Width;
+              if (newWidth > 200 && newWidth < 800) setCol2Width(newWidth);
+          }
+      };
+
+      const handleMouseUp = () => {
+          setIsResizingCol1(false);
+          setIsResizingCol2(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+      };
+
+      if (isResizingCol1 || isResizingCol2) {
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
       }
+
+      return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+      };
+  }, [isResizingCol1, isResizingCol2, col1Width]);
+
+
+  // --- Mobile Resize Logic ---
+  const handleMobileResizeStart = (e: React.TouchEvent | React.MouseEvent) => {
+      setIsResizingMobile(true);
+      document.body.style.userSelect = 'none';
+  };
+
+  const handleMobileResizeMove = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!isResizingMobile) return;
+      let clientY;
+      if ('touches' in e) clientY = e.touches[0].clientY;
+      else clientY = e.clientY;
 
       const headerOffset = 64; 
       const rawHeight = clientY - headerOffset;
@@ -127,30 +169,30 @@ const MatterBoard: React.FC<Props> = ({
       }
   };
 
-  const handleResizeEnd = () => {
-      setIsResizing(false);
+  const handleMobileResizeEnd = () => {
+      setIsResizingMobile(false);
       document.body.style.userSelect = '';
   };
 
   useEffect(() => {
-      if (isResizing) {
-          window.addEventListener('mousemove', handleResizeMove as any);
-          window.addEventListener('mouseup', handleResizeEnd);
-          window.addEventListener('touchmove', handleResizeMove as any);
-          window.addEventListener('touchend', handleResizeEnd);
+      if (isResizingMobile) {
+          window.addEventListener('mousemove', handleMobileResizeMove as any);
+          window.addEventListener('mouseup', handleMobileResizeEnd);
+          window.addEventListener('touchmove', handleMobileResizeMove as any);
+          window.addEventListener('touchend', handleMobileResizeEnd);
       } else {
-          window.removeEventListener('mousemove', handleResizeMove as any);
-          window.removeEventListener('mouseup', handleResizeEnd);
-          window.removeEventListener('touchmove', handleResizeMove as any);
-          window.removeEventListener('touchend', handleResizeEnd);
+          window.removeEventListener('mousemove', handleMobileResizeMove as any);
+          window.removeEventListener('mouseup', handleMobileResizeEnd);
+          window.removeEventListener('touchmove', handleMobileResizeMove as any);
+          window.removeEventListener('touchend', handleMobileResizeEnd);
       }
       return () => {
-          window.removeEventListener('mousemove', handleResizeMove as any);
-          window.removeEventListener('mouseup', handleResizeEnd);
-          window.removeEventListener('touchmove', handleResizeMove as any);
-          window.removeEventListener('touchend', handleResizeEnd);
+          window.removeEventListener('mousemove', handleMobileResizeMove as any);
+          window.removeEventListener('mouseup', handleMobileResizeEnd);
+          window.removeEventListener('touchmove', handleMobileResizeMove as any);
+          window.removeEventListener('touchend', handleMobileResizeEnd);
       }
-  }, [isResizing]);
+  }, [isResizingMobile]);
 
 
   const activeStage = matter.stages.find(s => s.id === selectedStageId);
@@ -177,157 +219,19 @@ const MatterBoard: React.FC<Props> = ({
     setIsEditingTitle(false);
   };
 
-  const exportMaterials = async (type: 'ALL' | 'REFERENCE' | 'DELIVERABLE') => {
-      setIsExporting(true);
-      setShowExportMenu(false);
-      try {
-          const zip = new JSZip();
-          const matterFolder = zip.folder(matter.title.replace(/[\\/:*?"<>|]/g, '_')) || zip;
+  // --- CRUD Operations & Handlers ---
 
-          for (const stage of matter.stages) {
-              const stageFolder = matterFolder.folder(stage.title.replace(/[\\/:*?"<>|]/g, '_'));
-              if (!stageFolder) continue;
-
-              for (const task of stage.tasks) {
-                  const taskFolder = stageFolder.folder(task.title.replace(/[\\/:*?"<>|]/g, '_'));
-                  if (!taskFolder) continue;
-
-                  let hasFiles = false;
-                  for (const mat of task.materials) {
-                      const isRef = mat.category === 'REFERENCE';
-                      const shouldInclude = 
-                          type === 'ALL' || 
-                          (type === 'REFERENCE' && isRef) || 
-                          (type === 'DELIVERABLE' && !isRef);
-
-                      if (shouldInclude && mat.fileId) {
-                          const file = await getFile(mat.fileId);
-                          if (file) {
-                              taskFolder.file(file.name, file);
-                              hasFiles = true;
-                          }
-                      }
-                  }
-              }
-          }
-
-          const content = await zip.generateAsync({ type: "blob" });
-          const url = window.URL.createObjectURL(content);
-          const a = document.createElement("a");
-          a.href = url;
-          const typeLabel = type === 'REFERENCE' ? '_参考模板' : type === 'DELIVERABLE' ? '_交付产物' : '_全部材料';
-          a.download = `${matter.title}${typeLabel}.zip`;
-          a.click();
-          window.URL.revokeObjectURL(url);
-      } catch (e) {
-          console.error("Export failed", e);
-          alert("导出失败，请重试");
-      } finally {
-          setIsExporting(false);
+  const handleTaskUpdate = (updatedTask: Task) => {
+    const newStages = matter.stages.map(s => {
+      const taskIndex = s.tasks.findIndex(t => t.id === updatedTask.id);
+      if (taskIndex !== -1) {
+        const newTasks = [...s.tasks];
+        newTasks[taskIndex] = updatedTask;
+        return { ...s, tasks: newTasks };
       }
-  };
-
-  const handleDragStart = (e: React.DragEvent, type: 'STAGE' | 'TASK', id: string, stageId?: string) => {
-    setDragItem({ type, id, stageId });
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, targetType: 'STAGE' | 'TASK', targetId: string, targetStageId?: string) => {
-    e.preventDefault();
-    if (!dragItem) return;
-
-    // STAGE REORDERING
-    if (dragItem.type === 'STAGE' && targetType === 'STAGE' && dragItem.id !== targetId) {
-        const oldIndex = matter.stages.findIndex(s => s.id === dragItem.id);
-        const newIndex = matter.stages.findIndex(s => s.id === targetId);
-        
-        if (oldIndex === -1 || newIndex === -1) return;
-
-        const newStages = [...matter.stages];
-        const [movedStage] = newStages.splice(oldIndex, 1);
-        newStages.splice(newIndex, 0, movedStage);
-        
-        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    }
-
-    // TASK REORDERING
-    if (dragItem.type === 'TASK' && targetType === 'TASK' && dragItem.id !== targetId && dragItem.stageId && targetStageId) {
-         const sourceStageIndex = matter.stages.findIndex(s => s.id === dragItem.stageId);
-         const targetStageIndex = matter.stages.findIndex(s => s.id === targetStageId);
-         
-         if (sourceStageIndex === -1 || targetStageIndex === -1) return;
-
-         const newStages = [...matter.stages];
-         
-         // Remove from source
-         const sourceStage = newStages[sourceStageIndex];
-         const taskIndex = sourceStage.tasks.findIndex(t => t.id === dragItem.id);
-         if (taskIndex === -1) return;
-         
-         const [movedTask] = sourceStage.tasks.splice(taskIndex, 1);
-
-         // Add to target
-         const targetStage = newStages[targetStageIndex]; 
-         
-         if (sourceStageIndex === targetStageIndex) {
-            const targetTaskIndex = sourceStage.tasks.findIndex(t => t.id === targetId);
-            sourceStage.tasks.splice(targetTaskIndex, 0, movedTask);
-         } else {
-             const targetTaskIndex = targetStage.tasks.findIndex(t => t.id === targetId);
-             targetStage.tasks.splice(targetTaskIndex, 0, movedTask);
-         }
-
-         onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    }
-    
-    setDragItem(null);
-  };
-
-
-  // --- CRUD Operations ---
-  const confirmAddStage = () => {
-    if (!newStageName.trim()) {
-      setIsAddingStage(false);
-      return;
-    }
-    const newStage: Stage = { id: uuid(), title: newStageName.trim(), tasks: [] };
-    const updatedStages = [...matter.stages, newStage];
-    onUpdate({ ...matter, stages: updatedStages, lastUpdated: Date.now() });
-    setNewStageName('');
-    setIsAddingStage(false);
-    setSelectedStageId(newStage.id);
-  };
-
-  const deleteStage = (stageId: string) => {
-      if(!confirm("确定删除此阶段及其所有任务吗？")) return;
-      const newStages = matter.stages.filter(s => s.id !== stageId);
-      if (selectedStageId === stageId) {
-          const deletedIndex = matter.stages.findIndex(s => s.id === stageId);
-          const nextStage = newStages[Math.max(0, deletedIndex - 1)];
-          setSelectedStageId(nextStage?.id || null);
-      }
-      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-  };
-
-  const startEditingStage = (stage: Stage) => {
-    setEditingStageId(stage.id);
-    setEditingStageName(stage.title);
-  };
-
-  const saveStageName = () => {
-    if (editingStageId && editingStageName.trim()) {
-      const newStages = matter.stages.map(s => 
-        s.id === editingStageId ? { ...s, title: editingStageName.trim() } : s
-      );
-      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    }
-    setEditingStageId(null);
-    setEditingStageName('');
+      return s;
+    });
+    onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
   };
 
   const addTask = () => {
@@ -348,21 +252,27 @@ const MatterBoard: React.FC<Props> = ({
       }
       return s;
     });
-
+    
     onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-    setSelectedTaskId(newTask.id); 
+    setSelectedTaskId(newTask.id);
+    
+    // Auto-start editing
+    setTimeout(() => {
+        setEditingTaskId(newTask.id);
+        setEditingTaskName(newTask.title);
+    }, 100);
   };
 
   const deleteTask = (stageId: string, taskId: string) => {
-      if (!confirm('确定删除此任务吗？')) return;
-      const newStages = matter.stages.map(s => {
-        if (s.id === stageId) {
-          return { ...s, tasks: s.tasks.filter(t => t.id !== taskId) };
-        }
-        return s;
-      });
-      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
-      if (selectedTaskId === taskId) setSelectedTaskId(null);
+    if (!confirm('确定删除此任务吗？')) return;
+    const newStages = matter.stages.map(s => {
+      if (s.id === stageId) {
+        return { ...s, tasks: s.tasks.filter(t => t.id !== taskId) };
+      }
+      return s;
+    });
+    onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    if (selectedTaskId === taskId) setSelectedTaskId(null);
   };
 
   const startEditingTask = (task: Task) => {
@@ -371,38 +281,179 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const saveTaskName = () => {
-    if (editingTaskId && editingTaskName.trim() && selectedStageId) {
-        const newStages = matter.stages.map(s => {
-            if (s.id === selectedStageId) {
-                return {
-                    ...s,
-                    tasks: s.tasks.map(t => t.id === editingTaskId ? { ...t, title: editingTaskName.trim() } : t)
-                }
-            }
-            return s;
-        });
-        onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    if (editingTaskId && editingTaskName.trim()) {
+      const newStages = matter.stages.map(s => ({
+        ...s,
+        tasks: s.tasks.map(t => t.id === editingTaskId ? { ...t, title: editingTaskName.trim() } : t)
+      }));
+      onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
     }
     setEditingTaskId(null);
     setEditingTaskName('');
   };
 
-  const handleTaskUpdate = (updatedTask: Task) => {
-    if (!selectedStageId) return;
-    let dismissedIds = matter.dismissedAttentionIds || [];
-    const currentTask = activeStage?.tasks.find(t => t.id === updatedTask.id);
-    if (currentTask && currentTask.status !== updatedTask.status) {
-        if (dismissedIds.includes(updatedTask.id)) {
-            dismissedIds = dismissedIds.filter(id => id !== updatedTask.id);
-        }
+  const confirmAddStage = () => {
+    if (!newStageName.trim()) {
+      setIsAddingStage(false);
+      return;
     }
-    const newStages = matter.stages.map(s => {
-      if (s.id === selectedStageId) {
-        return { ...s, tasks: s.tasks.map(t => t.id === updatedTask.id ? updatedTask : t) };
+    const newStage: Stage = {
+      id: uuid(),
+      title: newStageName.trim(),
+      tasks: []
+    };
+    const newStages = [...matter.stages, newStage];
+    onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    setNewStageName('');
+    setIsAddingStage(false);
+    setSelectedStageId(newStage.id);
+  };
+
+  const deleteStage = (stageId: string) => {
+    if (!confirm('确定删除此阶段及其所有任务吗？')) return;
+    const newStages = matter.stages.filter(s => s.id !== stageId);
+    onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+    if (selectedStageId === stageId) setSelectedStageId(newStages[0]?.id || null);
+  };
+
+  const startEditingStage = (stage: Stage) => {
+      setEditingStageId(stage.id);
+      setEditingStageName(stage.title);
+  };
+
+  const saveStageName = () => {
+      if (editingStageId && editingStageName.trim()) {
+          const newStages = matter.stages.map(s => s.id === editingStageId ? { ...s, title: editingStageName.trim() } : s);
+          onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
       }
-      return s;
-    });
-    onUpdate({ ...matter, stages: newStages, dismissedAttentionIds: dismissedIds, lastUpdated: Date.now() });
+      setEditingStageId(null);
+      setEditingStageName('');
+  };
+
+  // Drag and Drop Logic
+  const handleDragStart = (e: React.DragEvent, type: 'STAGE' | 'TASK', id: string, stageId?: string) => {
+      setDragItem({ type, id, stageId });
+      e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, type: 'STAGE' | 'TASK', targetId: string, targetStageId?: string) => {
+      e.preventDefault();
+      if (!dragItem) return;
+
+      if (dragItem.type !== type) return; // Only allow same type reordering
+      if (dragItem.id === targetId) return; // Drop on self
+
+      if (type === 'STAGE') {
+          const oldIndex = matter.stages.findIndex(s => s.id === dragItem.id);
+          const newIndex = matter.stages.findIndex(s => s.id === targetId);
+          if (oldIndex === -1 || newIndex === -1) return;
+
+          const newStages = [...matter.stages];
+          const [moved] = newStages.splice(oldIndex, 1);
+          newStages.splice(newIndex, 0, moved);
+          
+          onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+      } else if (type === 'TASK') {
+          // Task reordering - only within active stage list for simplicity in this view
+          if (dragItem.stageId !== selectedStageId || !selectedStageId) return;
+          
+          const stageIndex = matter.stages.findIndex(s => s.id === selectedStageId);
+          if (stageIndex === -1) return;
+          
+          const tasks = [...matter.stages[stageIndex].tasks];
+          const oldIndex = tasks.findIndex(t => t.id === dragItem.id);
+          const newIndex = tasks.findIndex(t => t.id === targetId);
+          
+          if (oldIndex === -1 || newIndex === -1) return;
+
+          const [moved] = tasks.splice(oldIndex, 1);
+          tasks.splice(newIndex, 0, moved);
+
+          const newStages = [...matter.stages];
+          newStages[stageIndex] = { ...newStages[stageIndex], tasks };
+          
+          onUpdate({ ...matter, stages: newStages, lastUpdated: Date.now() });
+      }
+      setDragItem(null);
+  };
+
+  // Export Logic
+  const exportMaterials = async (filterType: 'ALL' | 'REFERENCE' | 'DELIVERABLE') => {
+      setIsExporting(true);
+      setShowExportMenu(false);
+      try {
+          const zip = new JSZip();
+          const rootFolder = zip.folder(matter.title) || zip;
+          let fileCount = 0;
+
+          // Helper to add file to zip
+          const addFileToZip = async (folder: any, m: Material) => {
+              // Legacy single file
+              if (m.fileId) {
+                  const blob = await getFile(m.fileId);
+                  if (blob) {
+                      folder.file(m.fileName || m.name, blob);
+                      fileCount++;
+                  }
+              }
+              // New multi-files
+              if (m.files && m.files.length > 0) {
+                  const matFolder = m.files.length > 1 ? folder.folder(m.name) : folder;
+                  for (const f of m.files) {
+                      const blob = await getFile(f.id);
+                      if (blob) {
+                          matFolder.file(f.name, blob);
+                          fileCount++;
+                      }
+                  }
+              }
+          };
+
+          for (const stage of matter.stages) {
+              const stageFolder = rootFolder.folder(stage.title);
+              if (!stageFolder) continue;
+
+              for (const task of stage.tasks) {
+                  const materialsToExport = task.materials.filter(m => {
+                      if (!m.isReady) return false;
+                      if (filterType === 'ALL') return true;
+                      return m.category === filterType;
+                  });
+
+                  if (materialsToExport.length > 0) {
+                      const taskFolder = stageFolder.folder(task.title);
+                      if (taskFolder) {
+                          for (const m of materialsToExport) {
+                              await addFileToZip(taskFolder, m);
+                          }
+                      }
+                  }
+              }
+          }
+
+          if (fileCount === 0) {
+              alert("没有找到可导出的文件");
+              return;
+          }
+
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${matter.title}_${filterType}_Files.zip`;
+          a.click();
+          URL.revokeObjectURL(url);
+      } catch (e) {
+          console.error(e);
+          alert("导出失败");
+      } finally {
+          setIsExporting(false);
+      }
   };
 
   const getThemeIcon = () => {
@@ -485,12 +536,14 @@ const MatterBoard: React.FC<Props> = ({
   return (
     <>
     {/* 
-        DESKTOP LAYOUT (Hidden on mobile)
-        Fixed height, no body scroll.
+        DESKTOP LAYOUT 
+        Changed to Fixed Header overlaying content for true transparency effect.
+        Content containers have top padding to clear the header.
     */}
-    <div className="hidden md:flex w-full h-screen flex-col bg-white dark:bg-slate-950 overflow-hidden">
-        {/* Desktop Header */}
-        <header className="h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between shrink-0 relative z-50">
+    <div className="hidden md:block w-full h-screen bg-[#f8fafc] dark:bg-[#020617] overflow-hidden relative">
+        
+        {/* Absolute Header - Overlaps Content */}
+        <header className="absolute top-0 left-0 right-0 h-16 z-50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-4 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden flex-1 mr-4">
             <button onClick={goBack} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
               <ArrowLeft size={18} />
@@ -513,7 +566,7 @@ const MatterBoard: React.FC<Props> = ({
                       className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
                       value={editTitleVal}
                       onChange={(e) => setEditTitleVal(e.target.value)}
-                      onBlur={() => { if(!isTemplateMode) saveHeaderInfo() }} // In template mode, blur shouldn't close instantly to allow editing desc
+                      onBlur={() => { if(!isTemplateMode) saveHeaderInfo() }} 
                       onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
                       placeholder="事项/模板标题"
                     />
@@ -603,11 +656,12 @@ const MatterBoard: React.FC<Props> = ({
           </div>
         </header>
 
-        {/* Desktop Body */}
-        <div className="flex-1 w-full overflow-hidden flex relative">
+        {/* Content Body - Starts at top, but padded to show under header */}
+        <div className="flex w-full h-full pt-0 relative">
+            
             {/* Col 1: Stages */}
-                <div className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-y-auto">
-                    {/* Fixed Sticky Header for Stages */}
+            <div style={{ width: col1Width }} className="bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden shrink-0">
+                <div className="h-full overflow-y-auto pt-16">
                     <div className="sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur p-4 font-bold text-xs text-slate-400 uppercase tracking-wider flex justify-between border-b border-slate-200/50 dark:border-slate-800/50">
                         阶段
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
@@ -668,9 +722,17 @@ const MatterBoard: React.FC<Props> = ({
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Col 2: Tasks */}
-                <div className="w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto">
+            {/* Resizer 1 */}
+            <div 
+                className="w-1 cursor-col-resize bg-transparent hover:bg-blue-400 transition-colors z-20 shrink-0"
+                onMouseDown={(e) => handleColResizeStart(e, 1)}
+            />
+
+            {/* Col 2: Tasks */}
+            <div style={{ width: col2Width }} className="bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full overflow-hidden shrink-0">
+                <div className="h-full overflow-y-auto pt-16">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur z-10">
                         <span className="font-bold text-slate-800 dark:text-slate-100 truncate">{activeStage?.title}</span>
                         <button onClick={addTask} disabled={!selectedStageId} className="text-xs bg-slate-900 text-white px-2 py-1 rounded"><Plus size={12}/></button>
@@ -726,19 +788,28 @@ const MatterBoard: React.FC<Props> = ({
                         })}
                     </div>
                 </div>
+            </div>
 
-                {/* Col 3: Details / Timeline */}
-                <div className="flex-1 bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
+            {/* Resizer 2 */}
+            <div 
+                className="w-1 cursor-col-resize bg-transparent hover:bg-blue-400 transition-colors z-20 shrink-0"
+                onMouseDown={(e) => handleColResizeStart(e, 2)}
+            />
+
+            {/* Col 3: Details / Timeline */}
+            <div className="flex-1 bg-white dark:bg-slate-900 flex flex-col h-full overflow-hidden min-w-[300px]">
+                <div className="h-full overflow-y-auto pt-16">
                     {activeTask ? (
-                        <div className="h-full overflow-y-auto">
+                        <div className="min-h-full">
                             <TaskDetailPane task={activeTask} matterDueDate={matter.dueDate} onUpdate={handleTaskUpdate} onDelete={() => deleteTask(activeStage!.id, activeTask.id)} isTemplateMode={isTemplateMode} />
                         </div>
                     ) : (
-                        <div className="h-full overflow-y-auto">
+                        <div className="min-h-full">
                             <JudgmentTimeline matter={matter} allMatters={allMatters} onUpdate={onUpdate} />
                         </div>
                     )}
                 </div>
+            </div>
         </div>
     </div>
 
@@ -852,8 +923,8 @@ const MatterBoard: React.FC<Props> = ({
         <div 
             ref={resizeRef}
             className="shrink-0 z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shadow-sm"
-            onMouseDown={handleResizeStart}
-            onTouchStart={handleResizeStart}
+            onMouseDown={handleMobileResizeStart}
+            onTouchStart={handleMobileResizeStart}
         >
             <GripHorizontal size={16} className="text-slate-400" />
         </div>
