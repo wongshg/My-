@@ -229,6 +229,15 @@ const MatterBoard: React.FC<Props> = ({
     setIsEditingTitle(false);
   };
 
+  const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      if (!val) {
+          onUpdate({ ...matter, dueDate: undefined, lastUpdated: Date.now() });
+      } else {
+          onUpdate({ ...matter, dueDate: new Date(val).getTime(), lastUpdated: Date.now() });
+      }
+  };
+
   // --- CRUD Operations & Handlers ---
 
   const handleTaskUpdate = (updatedTask: Task) => {
@@ -594,13 +603,22 @@ const MatterBoard: React.FC<Props> = ({
                     )}
                 </div>
               ) : (
-                <div className="flex flex-col overflow-hidden cursor-pointer" onClick={() => setIsEditingTitle(true)}>
-                  <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
+                <div className="flex flex-col overflow-hidden">
+                  <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base cursor-pointer" onClick={() => setIsEditingTitle(true)}>{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       {isTemplateMode ? (
-                          <span className="text-slate-500">{matter.type || "点击编辑适用说明"}</span>
+                          <span className="text-slate-500 cursor-pointer" onClick={() => setIsEditingTitle(true)}>{matter.type || "点击编辑适用说明"}</span>
                       ) : (
-                          <><Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</>
+                          <div className="relative group flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 px-1.5 py-0.5 rounded -ml-1.5 transition-colors cursor-pointer">
+                              <Clock size={10} />
+                              <span>{matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</span>
+                              <input 
+                                type="date"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                value={matter.dueDate ? new Date(matter.dueDate).toISOString().split('T')[0] : ''}
+                                onChange={handleDueDateChange}
+                              />
+                          </div>
                       )}
                   </div>
                 </div>
@@ -860,13 +878,22 @@ const MatterBoard: React.FC<Props> = ({
                   onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
                 />
               ) : (
-                <div className="flex flex-col overflow-hidden" onClick={() => setIsEditingTitle(true)}>
-                  <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">{matter.title}</h1>
+                <div className="flex flex-col overflow-hidden">
+                  <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base cursor-pointer" onClick={() => setIsEditingTitle(true)}>{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       {isTemplateMode ? (
                           <span className="text-blue-500 font-medium">模板编辑模式</span>
                       ) : (
-                          <><Clock size={10} /> {matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</>
+                          <div className="relative group flex items-center gap-1">
+                              <Clock size={10} />
+                              <span>{matter.dueDate ? `截止: ${new Date(matter.dueDate).toLocaleDateString()}` : '设置截止时间'}</span>
+                              <input 
+                                type="date"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                value={matter.dueDate ? new Date(matter.dueDate).toISOString().split('T')[0] : ''}
+                                onChange={handleDueDateChange}
+                              />
+                          </div>
                       )}
                   </div>
                 </div>

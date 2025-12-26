@@ -182,8 +182,8 @@ export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatus
          - 请分析所有事项的 'lastJudgmentContent' 和 'activeTasks' 中的 'recentUpdate'。
          - 敏锐捕捉文本中提到的时间节点（如“下周一”、“3天后”、“预计15号”）、截止日期或明确的下一步动作。
          - 将这些分散的信息整理成一个简洁的、无序列表形式的纯文本计划（用换行符分隔，不要Markdown列表符号）。
-         - 如果没有明确的时间点，则列出急需处理的受阻项。
-         - 示例格式：“1. [事项A] 跟进外部审批结果（提及预计下周一反馈）\n2. [事项B] 提交公示材料（即将截止）”
+         - **关键要求**：每条计划的开头必须用方括号标注所属事项名称，格式为 "[事项名称] 具体计划内容"。
+         - 示例格式：“[金坛项目] 跟进外部审批结果\n[漳浦项目] 提交公示材料”
 
       ### 输入数据示例
       [ { title, currentStatus, lastJudgmentContent, activeTasks: [{title, status, recentUpdate, dueDate}] } ... ]
@@ -354,6 +354,73 @@ export const parseMaterialsFromText = async (text: string): Promise<{ name: stri
 
     } catch (e) {
         console.error("Material Parsing Failed:", e);
+        alert("识别失败");
+        return null;
+    }
+};
+
+export const generateMatterFromText = async (text: string): Promise<{
+    title: string;
+    dueDate: string | null;
+    stages: { title: string; tasks: { title: string }[] }[]
+} | null> => {
+    const { apiKey, apiHost } = getSettings();
+    if (!apiKey) {
+        alert("请先配置 API Key。");
+        return null;
+    }
+
+    const systemPrompt = `
+      你是一个智能工作助理。用户会输入一段关于新工作的描述（可能包含截止时间、任务内容等）。
+      你需要分析这段文本，并生成一个结构化的事项数据。
+      
+      输出必须是符合以下 JSON 格式（不要 Markdown）：
+      {
+        "title": "事项标题（简短概括，如'XXX协议审核'）",
+        "dueDate": "YYYY-MM-DD" (如果提到时间，否则为 null),
+        "stages": [
+           {
+             "title": "阶段名称（如'一、起草阶段'，如果没分阶段则叫'默认阶段'）",
+             "tasks": [
+                { "title": "任务名称" }
+             ]
+           }
+        ]
+      }
+      
+      要求：
+      1. 如果用户输入很简单，自动补充合理的步骤。
+      2. 提取最晚的日期作为 dueDate。
+    `;
+
+    try {
+        const cleanHost = apiHost.endsWith('/') ? apiHost.slice(0, -1) : apiHost;
+        const response = await fetch(`${cleanHost}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text }
+                ],
+                temperature: 0.5
+            })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+
+        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson);
+
+    } catch (e) {
+        console.error("Matter Generation Failed:", e);
         alert("识别失败");
         return null;
     }

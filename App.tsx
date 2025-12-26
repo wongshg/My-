@@ -3,10 +3,10 @@ import { Matter, Template, TaskStatus, Task, Stage, JudgmentRecord } from './typ
 import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText, Zap } from 'lucide-react';
 import JSZip from 'jszip';
 import { getFile, saveFile } from './services/storage';
-import { generateTemplateFromText } from './services/aiAnalysisService';
+import { generateTemplateFromText, generateMatterFromText } from './services/aiAnalysisService';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -398,6 +398,40 @@ const App: React.FC = () => {
     setActiveMatterId(newMatter.id);
   };
 
+  const handleCreateMatterDirectly = (title: string, dueDate: string | null, stages: { title: string; tasks: { title: string }[] }[]) => {
+      const newMatter: Matter = {
+          id: uuid(),
+          title: title,
+          type: 'AI 智能录入',
+          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+          createdAt: Date.now(),
+          lastUpdated: Date.now(),
+          stages: stages.map(s => ({
+              id: uuid(),
+              title: s.title,
+              tasks: s.tasks.map(t => ({
+                  id: uuid(),
+                  title: t.title,
+                  status: TaskStatus.PENDING,
+                  statusNote: '',
+                  statusUpdates: [],
+                  materials: [],
+                  lastUpdated: Date.now()
+              }))
+          })),
+          archived: false,
+          judgmentTimeline: [],
+          overallStatus: TaskStatus.PENDING,
+          currentSituation: "AI 自动生成事项，请补充细节。"
+      };
+      
+      const updated = [newMatter, ...matters];
+      setMatters(updated);
+      saveMatters(updated);
+      setIsNewMatterModalOpen(false);
+      setActiveMatterId(newMatter.id);
+  };
+
   const handleUpdateMatter = (updatedMatter: Matter) => {
     const updatedList = matters.map(m => m.id === updatedMatter.id ? updatedMatter : m);
     setMatters(updatedList);
@@ -692,9 +726,14 @@ const App: React.FC = () => {
   // --- Views ---
 
   const NewMatterView = () => {
+    const [mode, setMode] = useState<'TEMPLATE' | 'AI'>('TEMPLATE');
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [title, setTitle] = useState('');
     const [date, setDate] = useState('');
+    
+    // AI Mode
+    const [aiInput, setAiInput] = useState('');
+    const [isGeneratingMatter, setIsGeneratingMatter] = useState(false);
 
     const handleSubmit = () => {
       if (selectedTemplate && title) {
@@ -702,100 +741,180 @@ const App: React.FC = () => {
       }
     };
 
+    const handleAISubmit = async () => {
+        if(!aiInput.trim()) return;
+        setIsGeneratingMatter(true);
+        const result = await generateMatterFromText(aiInput);
+        setIsGeneratingMatter(false);
+        
+        if (result) {
+            handleCreateMatterDirectly(result.title, result.dueDate, result.stages);
+        }
+    };
+
     return (
       <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full flex overflow-hidden max-h-[85vh]">
-          {/* Left: Template Selection */}
+          
+          {/* Left Panel: Tabs */}
           <div className="w-5/12 border-r border-slate-100 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-slate-950">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-               <h2 className="text-lg font-bold text-slate-800 dark:text-white">选择业务类型</h2>
+               <h2 className="text-lg font-bold text-slate-800 dark:text-white">选择创建方式</h2>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div 
-                  onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}
-                  className={`border border-dashed rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedTemplate?.id === 'custom' 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500' 
-                    : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-white dark:hover:bg-slate-900'
-                  }`}
+            
+            <div className="p-2 space-y-2">
+                <button 
+                    onClick={() => setMode('TEMPLATE')}
+                    className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-all ${mode === 'TEMPLATE' ? 'bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-100 dark:hover:bg-slate-900'}`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Plus size={16} className="text-slate-500 dark:text-slate-400"/>
-                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">空白事项</h3>
-                  </div>
-                  <p className="text-xs text-slate-400">适用于非常规专项工作</p>
-                </div>
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><LayoutTemplate size={18} /></div>
+                    <div>
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-100">使用模板创建</div>
+                        <div className="text-xs text-slate-500">适用于标准化、重复性工作流程</div>
+                    </div>
+                </button>
 
-              {templates.map(t => (
-                <div 
-                  key={t.id} 
-                  onClick={() => setSelectedTemplate(t)}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all relative group ${
-                    selectedTemplate?.id === t.id 
-                    ? 'border-blue-500 bg-white dark:bg-slate-800 ring-1 ring-blue-500 shadow-md' 
-                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-slate-800 shadow-sm'
-                  }`}
+                <button 
+                    onClick={() => setMode('AI')}
+                    className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-all ${mode === 'AI' ? 'bg-white dark:bg-slate-800 shadow-sm border border-indigo-200 dark:border-indigo-900' : 'hover:bg-slate-100 dark:hover:bg-slate-900'}`}
                 >
-                  <div className="flex justify-between items-start">
-                    <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>{t.name}</h3>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{t.description}</p>
-                </div>
-              ))}
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full text-indigo-600 dark:text-indigo-400"><Sparkles size={18} /></div>
+                    <div>
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-100">AI 智能录入</div>
+                        <div className="text-xs text-slate-500">自然语言描述，自动生成非标事项</div>
+                    </div>
+                </button>
             </div>
+
+            {mode === 'TEMPLATE' && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 border-t border-slate-200 dark:border-slate-800">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">可选模板</div>
+                    <div 
+                        onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}
+                        className={`border border-dashed rounded-lg p-3 cursor-pointer transition-all ${
+                            selectedTemplate?.id === 'custom' 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500' 
+                            : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-white dark:hover:bg-slate-900'
+                        }`}
+                        >
+                        <div className="flex items-center gap-2 mb-1">
+                            <Plus size={14} className="text-slate-500 dark:text-slate-400"/>
+                            <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200">空白事项</h3>
+                        </div>
+                    </div>
+
+                    {templates.map(t => (
+                        <div 
+                        key={t.id} 
+                        onClick={() => setSelectedTemplate(t)}
+                        className={`border rounded-lg p-3 cursor-pointer transition-all relative group ${
+                            selectedTemplate?.id === t.id 
+                            ? 'border-blue-500 bg-white dark:bg-slate-800 ring-1 ring-blue-500 shadow-md' 
+                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-slate-800 shadow-sm'
+                        }`}
+                        >
+                        <div className="flex justify-between items-start">
+                            <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>{t.name}</h3>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{t.description}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
           </div>
 
-          {/* Right: Details */}
+          {/* Right: Content */}
           <div className="w-7/12 p-8 flex flex-col bg-white dark:bg-slate-900">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-8">开始新工作</h2>
-            
-            <div className="space-y-6 flex-1">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">事项名称 <span className="text-red-500">*</span></label>
-                <input 
-                  type="text" 
-                  autoFocus
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="例如：XX项目公司注销"
-                  className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">预计完成日期</label>
-                <input 
-                  type="date" 
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
-                />
-                <p className="text-xs text-slate-400 mt-2">临期前 7 天将在工作台置顶提醒。</p>
-              </div>
+            {mode === 'TEMPLATE' ? (
+                <>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-8">填写基础信息</h2>
+                    <div className="space-y-6 flex-1">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">事项名称 <span className="text-red-500">*</span></label>
+                        <input 
+                        type="text" 
+                        autoFocus
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="例如：XX项目公司注销"
+                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">预计完成日期</label>
+                        <input 
+                        type="date" 
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
+                        />
+                        <p className="text-xs text-slate-400 mt-2">临期前 7 天将在工作台置顶提醒。</p>
+                    </div>
 
-              {selectedTemplate && (
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
-                   已选模板：<span className="font-bold text-slate-800 dark:text-white">{selectedTemplate.name}</span>
-                   <div className="mt-1 text-xs text-slate-400">包含 {selectedTemplate.stages.length} 个阶段</div>
-                </div>
-              )}
-            </div>
+                    {selectedTemplate && (
+                        <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                        已选模板：<span className="font-bold text-slate-800 dark:text-white">{selectedTemplate.name}</span>
+                        <div className="mt-1 text-xs text-slate-400">包含 {selectedTemplate.stages.length} 个阶段</div>
+                        </div>
+                    )}
+                    </div>
 
-            <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-              <button 
-                onClick={() => setIsNewMatterModalOpen(false)}
-                className="px-6 py-2.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-medium transition-colors"
-              >
-                取消
-              </button>
-              <button 
-                disabled={!selectedTemplate || !title}
-                onClick={handleSubmit}
-                className="flex-1 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-200 dark:shadow-none font-medium"
-              >
-                创建事项
-              </button>
-            </div>
+                    <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <button 
+                        onClick={() => setIsNewMatterModalOpen(false)}
+                        className="px-6 py-2.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-medium transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button 
+                        disabled={!selectedTemplate || !title}
+                        onClick={handleSubmit}
+                        className="flex-1 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-200 dark:shadow-none font-medium"
+                    >
+                        创建事项
+                    </button>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">AI 智能录入</h2>
+                    <p className="text-sm text-slate-500 mb-6">描述您的工作内容，AI 将自动提取标题、截止时间并生成任务列表。</p>
+                    
+                    <div className="flex-1 flex flex-col">
+                        <textarea 
+                            className="w-full h-48 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                            placeholder="例如：请在下周五之前完成XX合同的审核工作，需要先进行初审，然后找法务部复核，最后盖章归档。"
+                            value={aiInput}
+                            onChange={(e) => setAiInput(e.target.value)}
+                        />
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
+                            <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1"><Zap size={12}/> AI 将自动识别：</h4>
+                            <ul className="text-xs text-indigo-800 dark:text-indigo-300 list-disc list-inside space-y-0.5 ml-1">
+                                <li>事项标题与关键描述</li>
+                                <li>截止日期 (如提及)</li>
+                                <li>分阶段的任务执行计划</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <button 
+                            onClick={() => setIsNewMatterModalOpen(false)}
+                            className="px-6 py-2.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-medium transition-colors"
+                        >
+                            取消
+                        </button>
+                        <button 
+                            onClick={handleAISubmit}
+                            disabled={!aiInput.trim() || isGeneratingMatter}
+                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                        >
+                            {isGeneratingMatter ? <><Sparkles size={16} className="animate-spin"/> 正在生成...</> : '一键生成事项'}
+                        </button>
+                    </div>
+                </>
+            )}
           </div>
         </div>
       </div>

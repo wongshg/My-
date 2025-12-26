@@ -503,8 +503,9 @@ const Dashboard: React.FC<Props> = ({
                                     </h4>
                                     <div className="grid grid-cols-1 gap-2">
                                         {aiResult.actionPlan.split('\n').filter(line => line.trim().length > 0).map((line, idx) => {
-                                            const cleanLine = line.replace(/^\d+[\.|,|、]\s*/, '');
                                             const isCompleted = (aiResult.completedActionIndices || []).includes(idx);
+                                            // Parse [Matter Name] if exists
+                                            const match = line.match(/^\[(.*?)\](.*)/);
                                             
                                             return (
                                                 <div 
@@ -521,9 +522,20 @@ const Dashboard: React.FC<Props> = ({
                                                     <div className={`mt-0.5 shrink-0 transition-colors ${isCompleted ? 'text-emerald-500' : 'text-indigo-300 group-hover:text-indigo-500'}`}>
                                                         {isCompleted ? <CheckCircle2 size={16} className="fill-emerald-100 dark:fill-emerald-900"/> : <Circle size={16} />}
                                                     </div>
-                                                    <p className={`text-sm leading-snug transition-all ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
-                                                        {cleanLine}
-                                                    </p>
+                                                    
+                                                    <div className={`text-sm leading-snug transition-all ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                        {match ? (
+                                                            <>
+                                                                <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold mr-2 mb-1 lg:mb-0">
+                                                                    {match[1]}
+                                                                </span>
+                                                                {match[2]}
+                                                            </>
+                                                        ) : (
+                                                            // Remove numbering if any (e.g. 1. Task)
+                                                            line.replace(/^\d+[\.|,|、]\s*/, '')
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
