@@ -3,7 +3,7 @@ import { Matter, Template, TaskStatus, Task, Stage, JudgmentRecord } from './typ
 import { ALL_TEMPLATES, SPV_DEREGISTRATION_TEMPLATE } from './constants';
 import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
-import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText, Zap } from 'lucide-react';
+import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText, Zap, ListChecks, Layers } from 'lucide-react';
 import JSZip from 'jszip';
 import { getFile, saveFile } from './services/storage';
 import { generateTemplateFromText, generateMatterFromText } from './services/aiAnalysisService';
@@ -398,11 +398,11 @@ const App: React.FC = () => {
     setActiveMatterId(newMatter.id);
   };
 
-  const handleCreateMatterDirectly = (title: string, dueDate: string | null, stages: { title: string; tasks: { title: string }[] }[]) => {
+  const handleCreateMatterDirectly = (title: string, dueDate: string | null, stages: { title: string; tasks: { title: string }[] }[], isSimple: boolean) => {
       const newMatter: Matter = {
           id: uuid(),
           title: title,
-          type: 'AI 智能录入',
+          type: isSimple ? '快速任务' : 'AI 智能录入',
           dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
           createdAt: Date.now(),
           lastUpdated: Date.now(),
@@ -734,6 +734,7 @@ const App: React.FC = () => {
     // AI Mode
     const [aiInput, setAiInput] = useState('');
     const [isGeneratingMatter, setIsGeneratingMatter] = useState(false);
+    const [aiModeType, setAiModeType] = useState<'SIMPLE' | 'COMPLEX'>('COMPLEX'); // New State
 
     const handleSubmit = () => {
       if (selectedTemplate && title) {
@@ -744,11 +745,11 @@ const App: React.FC = () => {
     const handleAISubmit = async () => {
         if(!aiInput.trim()) return;
         setIsGeneratingMatter(true);
-        const result = await generateMatterFromText(aiInput);
+        const result = await generateMatterFromText(aiInput, aiModeType === 'SIMPLE');
         setIsGeneratingMatter(false);
         
         if (result) {
-            handleCreateMatterDirectly(result.title, result.dueDate, result.stages);
+            handleCreateMatterDirectly(result.title, result.dueDate, result.stages, aiModeType === 'SIMPLE');
         }
     };
 
@@ -787,7 +788,7 @@ const App: React.FC = () => {
             </div>
 
             {mode === 'TEMPLATE' && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 border-t border-slate-200 dark:border-slate-800 max-h-[300px]">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">可选模板</div>
                     <div 
                         onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}
@@ -881,10 +882,33 @@ const App: React.FC = () => {
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">AI 智能录入</h2>
                     <p className="text-sm text-slate-500 mb-6">描述您的工作内容，AI 将自动提取标题、截止时间并生成任务列表。</p>
                     
+                    <div className="flex gap-4 mb-4">
+                        <button 
+                            onClick={() => setAiModeType('SIMPLE')}
+                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'SIMPLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <ListChecks size={16} className={aiModeType === 'SIMPLE' ? 'text-indigo-600' : 'text-slate-400'}/>
+                                <span className={`text-sm font-bold ${aiModeType === 'SIMPLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>简单任务模式</span>
+                            </div>
+                            <p className="text-xs text-slate-500">生成单个待办清单，适合短期任务</p>
+                        </button>
+                        <button 
+                            onClick={() => setAiModeType('COMPLEX')}
+                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'COMPLEX' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Layers size={16} className={aiModeType === 'COMPLEX' ? 'text-indigo-600' : 'text-slate-400'}/>
+                                <span className={`text-sm font-bold ${aiModeType === 'COMPLEX' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>复杂项目模式</span>
+                            </div>
+                            <p className="text-xs text-slate-500">自动拆解多个阶段，适合长期项目</p>
+                        </button>
+                    </div>
+
                     <div className="flex-1 flex flex-col">
                         <textarea 
-                            className="w-full h-48 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
-                            placeholder="例如：请在下周五之前完成XX合同的审核工作，需要先进行初审，然后找法务部复核，最后盖章归档。"
+                            className="w-full h-40 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                            placeholder={aiModeType === 'SIMPLE' ? "例如：下周五前要交一份市场调研报告，需要先搜集数据，然后写大纲，最后完善PPT。" : "例如：启动新公司设立流程，预计耗时2个月。需要先核名，然后去工商局交材料，最后刻章备案。"}
                             value={aiInput}
                             onChange={(e) => setAiInput(e.target.value)}
                         />
@@ -893,7 +917,7 @@ const App: React.FC = () => {
                             <ul className="text-xs text-indigo-800 dark:text-indigo-300 list-disc list-inside space-y-0.5 ml-1">
                                 <li>事项标题与关键描述</li>
                                 <li>截止日期 (如提及)</li>
-                                <li>分阶段的任务执行计划</li>
+                                <li>{aiModeType === 'SIMPLE' ? '生成单一待办清单' : '生成分阶段执行计划'}</li>
                             </ul>
                         </div>
                     </div>

@@ -278,7 +278,15 @@ const Dashboard: React.FC<Props> = ({
   const completedActiveMatters = activeMatters.filter(m => 
     m.stages.length > 0 && m.stages.every(s => s.tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.SKIPPED))
   );
-  const inProgressMatters = activeMatters.filter(m => !completedActiveMatters.some(cm => cm.id === m.id));
+  // Sort In Progress Matters: 1. Due Date (ASC, null last), 2. Last Updated (DESC)
+  const inProgressMatters = activeMatters
+    .filter(m => !completedActiveMatters.some(cm => cm.id === m.id))
+    .sort((a, b) => {
+        if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return b.lastUpdated - a.lastUpdated;
+    });
 
   const handleAnalyze = async () => {
       if (inProgressMatters.length === 0) {
@@ -495,13 +503,13 @@ const Dashboard: React.FC<Props> = ({
                                  </div>
                              </div>
                              
-                             {/* Action Plan Section - Interactive & Compact */}
+                             {/* Action Plan Section - Interactive & Compact & 2 Columns */}
                              {aiResult.actionPlan && (
                                 <div className="border-t border-indigo-100 dark:border-indigo-900 p-4 lg:px-5 bg-white/40 dark:bg-white/5">
                                     <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                         <ListTodo size={16}/> 建议工作任务计划 (近期)
                                     </h4>
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
                                         {aiResult.actionPlan.split('\n').filter(line => line.trim().length > 0).map((line, idx) => {
                                             const isCompleted = (aiResult.completedActionIndices || []).includes(idx);
                                             // Parse [Matter Name] if exists
@@ -523,13 +531,15 @@ const Dashboard: React.FC<Props> = ({
                                                         {isCompleted ? <CheckCircle2 size={16} className="fill-emerald-100 dark:fill-emerald-900"/> : <Circle size={16} />}
                                                     </div>
                                                     
-                                                    <div className={`text-sm leading-snug transition-all ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                    <div className={`text-sm leading-snug transition-all flex-1 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
                                                         {match ? (
                                                             <>
-                                                                <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold mr-2 mb-1 lg:mb-0">
-                                                                    {match[1]}
-                                                                </span>
-                                                                {match[2]}
+                                                                <div className="mb-1">
+                                                                    <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold">
+                                                                        {match[1]}
+                                                                    </span>
+                                                                </div>
+                                                                <div>{match[2]}</div>
                                                             </>
                                                         ) : (
                                                             // Remove numbering if any (e.g. 1. Task)

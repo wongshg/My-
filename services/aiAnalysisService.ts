@@ -165,8 +165,12 @@ export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatus
 
     if (activeMatters.length === 0) return null;
 
+    const todayStr = new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
     const systemPrompt = `
       你是一个法务运营工作台的态势感知 AI。你的任务是根据所有进行中事项的状态、判断记录及具体任务进展，生成一份【工作态势速览】。
+      
+      当前日期是：${todayStr}。请根据这个日期准确计算“明天”、“下周”、“3天后”等相对时间，并在输出中转换为具体日期（如 10月25日）。
 
       ### 必须遵守的原则
       1. **仅描述事实与态势**：归纳“现在是什么情况”。
@@ -182,8 +186,8 @@ export const analyzeWorkStatus = async (matters: Matter[]): Promise<AIWorkStatus
          - 请分析所有事项的 'lastJudgmentContent' 和 'activeTasks' 中的 'recentUpdate'。
          - 敏锐捕捉文本中提到的时间节点（如“下周一”、“3天后”、“预计15号”）、截止日期或明确的下一步动作。
          - 将这些分散的信息整理成一个简洁的、无序列表形式的纯文本计划（用换行符分隔，不要Markdown列表符号）。
-         - **关键要求**：每条计划的开头必须用方括号标注所属事项名称，格式为 "[事项名称] 具体计划内容"。
-         - 示例格式：“[金坛项目] 跟进外部审批结果\n[漳浦项目] 提交公示材料”
+         - **关键要求**：每条计划的开头必须用方括号标注所属事项名称，格式为 "[事项名称] 具体计划内容(包含具体日期)"。
+         - 示例格式：“[金坛项目] 跟进外部审批结果 (预计10月28日)\n[漳浦项目] 提交公示材料”
 
       ### 输入数据示例
       [ { title, currentStatus, lastJudgmentContent, activeTasks: [{title, status, recentUpdate, dueDate}] } ... ]
@@ -359,7 +363,7 @@ export const parseMaterialsFromText = async (text: string): Promise<{ name: stri
     }
 };
 
-export const generateMatterFromText = async (text: string): Promise<{
+export const generateMatterFromText = async (text: string, isSimpleMode: boolean = false): Promise<{
     title: string;
     dueDate: string | null;
     stages: { title: string; tasks: { title: string }[] }[]
@@ -370,14 +374,25 @@ export const generateMatterFromText = async (text: string): Promise<{
         return null;
     }
 
+    const todayStr = new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
     const systemPrompt = `
       你是一个智能工作助理。用户会输入一段关于新工作的描述（可能包含截止时间、任务内容等）。
       你需要分析这段文本，并生成一个结构化的事项数据。
       
+      **重要上下文信息：**
+      今天是 ${todayStr}。
+      请务必基于“今天”准确计算用户输入中提到的相对时间（如“下周五”、“明天”、“后天”）所对应的具体日期，并输出为 YYYY-MM-DD 格式。例如，如果今天是周五，用户说“下周一”，你应该算出下周一的具体日期。
+
+      **模式要求：**
+      ${isSimpleMode 
+        ? '用户选择了【简单任务模式】。请生成一个名为“待办清单”的单一阶段。将用户描述拆解为若干个具体的子任务。如果未提及明确截止日期，默认设置为一周后。' 
+        : '用户选择了【复杂项目模式】。请根据工作逻辑，将其拆分为合理的多个阶段（Stage），每个阶段包含若干任务。如果未提及明确截止日期，提取最晚的时间点。'}
+
       输出必须是符合以下 JSON 格式（不要 Markdown）：
       {
         "title": "事项标题（简短概括，如'XXX协议审核'）",
-        "dueDate": "YYYY-MM-DD" (如果提到时间，否则为 null),
+        "dueDate": "YYYY-MM-DD" (计算出的准确日期),
         "stages": [
            {
              "title": "阶段名称（如'一、起草阶段'，如果没分阶段则叫'默认阶段'）",
@@ -387,10 +402,6 @@ export const generateMatterFromText = async (text: string): Promise<{
            }
         ]
       }
-      
-      要求：
-      1. 如果用户输入很简单，自动补充合理的步骤。
-      2. 提取最晚的日期作为 dueDate。
     `;
 
     try {
