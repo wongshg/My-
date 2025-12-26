@@ -788,7 +788,7 @@ const App: React.FC = () => {
             </div>
 
             {mode === 'TEMPLATE' && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 border-t border-slate-200 dark:border-slate-800 max-h-[300px]">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 border-t border-slate-200 dark:border-slate-800 max-h-[300px] overscroll-contain">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">可选模板</div>
                     <div 
                         onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}

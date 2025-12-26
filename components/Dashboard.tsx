@@ -4,7 +4,7 @@ import {
   Plus, CheckCircle, AlertOctagon, Calendar, Trash2, LayoutTemplate, 
   ArrowRight, AlertCircle, Clock, Activity, CheckSquare, X, Archive,
   Moon, Sun, SunMoon, Database, ChevronDown, ChevronUp, PieChart, EyeOff,
-  BrainCircuit, RefreshCw, Sparkles, Settings, ListTodo, Circle, History, CheckCircle2
+  BrainCircuit, RefreshCw, Sparkles, Settings, ListTodo, Circle, History, CheckCircle2, Gauge
 } from 'lucide-react';
 import { analyzeWorkStatus } from '../services/aiAnalysisService';
 
@@ -227,6 +227,67 @@ const DetailedStatCard = ({ label, matters, icon: Icon, color, count }: any) => 
                      <div className="text-xs text-slate-300 dark:text-slate-600 italic mt-2">暂无数据</div>
                  )}
              </div>
+        </div>
+    );
+};
+
+// Pressure Gauge Component for Workload
+const WorkloadGauge = ({ workloadText }: { workloadText: string }) => {
+    // Determine level based on keywords
+    let level = 20; // Default Low
+    let color = '#10b981'; // Emerald
+    let label = '正常负荷';
+
+    if (workloadText.match(/高|重|满|险|多|大|紧/)) {
+        level = 85;
+        color = '#ef4444'; // Red
+        label = '高负荷';
+    } else if (workloadText.match(/中|适|稳|常/)) {
+        level = 50;
+        color = '#f59e0b'; // Amber
+        label = '中等负荷';
+    } else {
+        label = '低负荷';
+    }
+
+    // Gauge geometry
+    const radius = 35;
+    const stroke = 6;
+    const normalizedRadius = radius - stroke * 0.5;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const offset = circumference - (level / 100) * (circumference / 2); // Only show half circle logic roughly
+
+    // Semi-circle SVG path (M startX startY A radius radius 0 0 1 endX endY)
+    // Center at 50, 50. Radius 35. 
+    // Start at 15, 50. End at 85, 50.
+    
+    // Simple rotation based needle approach
+    const needleRotation = -90 + (level / 100) * 180;
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full pt-1">
+            <div className="relative w-24 h-14 overflow-hidden">
+                <div className="absolute top-0 left-0 w-24 h-24 rounded-full border-[8px] border-slate-100 dark:border-slate-700"></div>
+                {/* Colored Arc - simulated by rotation or CSS conic gradient is easier, but here we use simple style */}
+                <div 
+                    className="absolute top-0 left-0 w-24 h-24 rounded-full border-[8px] border-transparent transition-all duration-1000 ease-out"
+                    style={{ 
+                        borderTopColor: color, 
+                        borderRightColor: level > 50 ? color : 'transparent',
+                        transform: `rotate(-45deg)` // Simplified visual representation
+                    }}
+                ></div>
+                
+                {/* Needle */}
+                <div 
+                    className="absolute bottom-0 left-1/2 w-1 h-12 bg-slate-800 dark:bg-white origin-bottom rounded-full transition-all duration-1000 ease-out shadow-sm z-10"
+                    style={{ transform: `translateX(-50%) rotate(${needleRotation}deg)` }}
+                ></div>
+                <div className="absolute bottom-0 left-1/2 w-4 h-4 bg-slate-800 dark:bg-white rounded-full -translate-x-1/2 translate-y-1/2 z-20"></div>
+            </div>
+            <div className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-300 text-center">
+                <span style={{ color: color }} className="mr-1">●</span> {label}
+            </div>
         </div>
     );
 };
@@ -485,11 +546,13 @@ const Dashboard: React.FC<Props> = ({
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
                                      <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p>
                                  </div>
-                                 <div className="p-4 lg:p-5">
+                                 <div className="p-4 lg:p-5 flex flex-col">
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">工作负荷</h4>
-                                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">
-                                         {aiResult.workload || "暂无显著负荷风险"}
-                                     </p>
+                                     {aiResult.workload ? (
+                                         <WorkloadGauge workloadText={aiResult.workload} />
+                                     ) : (
+                                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">暂无显著负荷风险</p>
+                                     )}
                                  </div>
                                  <div className="p-4 lg:p-5">
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">主要受阻</h4>
@@ -503,13 +566,13 @@ const Dashboard: React.FC<Props> = ({
                                  </div>
                              </div>
                              
-                             {/* Action Plan Section - Interactive & Compact & 2 Columns */}
+                             {/* Action Plan Section - Interactive & Compact & Single Column */}
                              {aiResult.actionPlan && (
                                 <div className="border-t border-indigo-100 dark:border-indigo-900 p-4 lg:px-5 bg-white/40 dark:bg-white/5">
                                     <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                         <ListTodo size={16}/> 建议工作任务计划 (近期)
                                     </h4>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
+                                    <div className="grid grid-cols-1 gap-2">
                                         {aiResult.actionPlan.split('\n').filter(line => line.trim().length > 0).map((line, idx) => {
                                             const isCompleted = (aiResult.completedActionIndices || []).includes(idx);
                                             // Parse [Matter Name] if exists
@@ -534,12 +597,10 @@ const Dashboard: React.FC<Props> = ({
                                                     <div className={`text-sm leading-snug transition-all flex-1 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
                                                         {match ? (
                                                             <>
-                                                                <div className="mb-1">
-                                                                    <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold">
-                                                                        {match[1]}
-                                                                    </span>
-                                                                </div>
-                                                                <div>{match[2]}</div>
+                                                                <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold mr-2 mb-1 lg:mb-0">
+                                                                    {match[1]}
+                                                                </span>
+                                                                {match[2]}
                                                             </>
                                                         ) : (
                                                             // Remove numbering if any (e.g. 1. Task)
