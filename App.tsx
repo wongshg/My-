@@ -507,10 +507,15 @@ const App: React.FC = () => {
           const content = await zip.generateAsync({ type: "blob" });
           const url = URL.createObjectURL(content);
           const a = document.createElement('a');
+          a.style.display = 'none';
           a.href = url;
           a.download = `Orbit_FullBackup_${new Date().toISOString().split('T')[0]}.zip`;
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(url);
+          setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+          }, 1000);
       } catch (e) {
           console.error(e);
           alert("备份失败，请稍后重试");

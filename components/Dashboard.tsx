@@ -349,6 +349,13 @@ const Dashboard: React.FC<Props> = ({
         return b.lastUpdated - a.lastUpdated;
     });
 
+  const groupedInProgressMatters = inProgressMatters.reduce((acc, m) => {
+      const type = m.type || '未分类';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(m);
+      return acc;
+  }, {} as Record<string, Matter[]>);
+
   const handleAnalyze = async () => {
       if (inProgressMatters.length === 0) {
           alert("暂无进行中的事项可供分析");
@@ -356,7 +363,7 @@ const Dashboard: React.FC<Props> = ({
       }
       setIsAnalyzing(true);
       setShowAiHistory(false);
-      const res = await analyzeWorkStatus(matters);
+      const res = await analyzeWorkStatus(inProgressMatters);
       if (res) {
           setAiResult(res);
           const newHistory = [res, ...aiHistory].slice(0, 20); // Keep last 20 records
@@ -667,20 +674,30 @@ const Dashboard: React.FC<Props> = ({
                              <button onClick={onNewMatter} className="text-blue-600 dark:text-blue-400 text-xs hover:underline">创建一个新事项</button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            {inProgressMatters.map(m => {
-                                const hasAttention = attentionGroups.some(g => g.matter.id === m.id);
-                                return (
-                                    <MatterCard 
-                                        key={m.id} 
-                                        m={m} 
-                                        type="normal" 
-                                        onSelectMatter={onSelectMatter} 
-                                        onDeleteMatter={onDeleteMatter}
-                                        hasAttention={hasAttention}
-                                    />
-                                );
-                            })}
+                        <div className="space-y-8">
+                            {Object.entries(groupedInProgressMatters).map(([type, matters]) => (
+                                <div key={type}>
+                                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                        <div className="w-1 h-3 bg-blue-300 dark:bg-blue-700 rounded-full"></div>
+                                        {type} ({matters.length})
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                        {matters.map(m => {
+                                            const hasAttention = attentionGroups.some(g => g.matter.id === m.id);
+                                            return (
+                                                <MatterCard 
+                                                    key={m.id} 
+                                                    m={m} 
+                                                    type="normal" 
+                                                    onSelectMatter={onSelectMatter} 
+                                                    onDeleteMatter={onDeleteMatter}
+                                                    hasAttention={hasAttention}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </section>

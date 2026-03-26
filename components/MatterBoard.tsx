@@ -91,7 +91,12 @@ const MatterBoard: React.FC<Props> = ({
   // Robust Scroll Reset
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [matter.id]);
+    if (!targetTaskId) {
+      const firstIncomplete = matter.stages.find(s => !isStageComplete(s));
+      setSelectedStageId(firstIncomplete ? firstIncomplete.id : (matter.stages[0]?.id || null));
+      setSelectedTaskId(null);
+    }
+  }, [matter.id, targetTaskId]);
 
   // Handle Deep Linking
   useEffect(() => {
@@ -465,8 +470,14 @@ const MatterBoard: React.FC<Props> = ({
           const a = document.createElement('a');
           a.href = url;
           a.download = `${matter.title}_${filterType}_Files.zip`;
+          a.style.display = 'none';
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(url);
+          
+          setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+          }, 1000);
       } catch (e) {
           console.error(e);
           alert("导出失败");

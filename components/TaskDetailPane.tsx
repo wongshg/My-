@@ -220,8 +220,14 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
           const a = document.createElement('a');
           a.href = url;
           a.download = fileName || 'download';
+          a.style.display = 'none';
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(url);
+          
+          setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+          }, 1000);
       } else {
           alert("文件丢失或无法读取");
       }
