@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, TaskStatus, Material, StatusUpdate, AttachedFile } from '../types';
 import { FileText, CheckCircle2, Circle, Trash2, Plus, X, Check, MessageSquare, Edit3, Upload, File as FileIcon, Calendar, Package, BookOpen, GripVertical, Sparkles } from 'lucide-react';
+import { saveAs } from 'file-saver';
 import { saveFile, getFile, deleteFile as deleteFileFromDB } from '../services/storage';
 import { parseMaterialsFromText } from '../services/aiAnalysisService';
 
@@ -216,18 +217,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
   const handleFileDownload = async (fileId: string, fileName: string) => {
       const file = await getFile(fileId);
       if (file) {
-          const url = URL.createObjectURL(file);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName || 'download';
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          
-          setTimeout(() => {
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-          }, 1000);
+          saveAs(file, fileName || 'download');
       } else {
           alert("文件丢失或无法读取");
       }

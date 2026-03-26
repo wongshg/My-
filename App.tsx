@@ -5,6 +5,7 @@ import MatterBoard from './components/MatterBoard';
 import Dashboard from './components/Dashboard';
 import { Plus, Trash2, LayoutTemplate, X, Check, Edit2, Save, Database, Upload, Download, Settings, Key, Server, Sparkles, FileText, Zap, ListChecks, Layers } from 'lucide-react';
 import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { getFile, saveFile } from './services/storage';
 import { generateTemplateFromText, generateMatterFromText } from './services/aiAnalysisService';
 
@@ -498,24 +499,19 @@ const App: React.FC = () => {
               for (const fid of fileIds) {
                   const fileBlob = await getFile(fid);
                   if (fileBlob) {
-                      assetsFolder.file(fid, fileBlob);
+                      try {
+                          const arrayBuffer = await fileBlob.arrayBuffer();
+                          assetsFolder.file(fid, arrayBuffer);
+                      } catch (err) {
+                          console.warn(`Failed to read file ${fid}`, err);
+                      }
                   }
               }
           }
 
           // 3. Generate Zip
           const content = await zip.generateAsync({ type: "blob" });
-          const url = URL.createObjectURL(content);
-          const a = document.createElement('a');
-          a.style.display = 'none';
-          a.href = url;
-          a.download = `Orbit_FullBackup_${new Date().toISOString().split('T')[0]}.zip`;
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => {
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-          }, 1000);
+          saveAs(content, `Orbit_FullBackup_${new Date().toISOString().split('T')[0]}.zip`);
       } catch (e) {
           console.error(e);
           alert("备份失败，请稍后重试");

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { analyzeMatter } from '../services/geminiService';
 import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { getFile } from '../services/storage';
 
 interface Props {
@@ -421,8 +422,13 @@ const MatterBoard: React.FC<Props> = ({
               if (m.fileId) {
                   const blob = await getFile(m.fileId);
                   if (blob) {
-                      folder.file(m.fileName || m.name, blob);
-                      fileCount++;
+                      try {
+                          const arrayBuffer = await blob.arrayBuffer();
+                          folder.file(m.fileName || m.name, arrayBuffer);
+                          fileCount++;
+                      } catch (err) {
+                          console.warn(`Failed to read file ${m.fileId}`, err);
+                      }
                   }
               }
               // New multi-files
@@ -431,8 +437,13 @@ const MatterBoard: React.FC<Props> = ({
                   for (const f of m.files) {
                       const blob = await getFile(f.id);
                       if (blob) {
-                          matFolder.file(f.name, blob);
-                          fileCount++;
+                          try {
+                              const arrayBuffer = await blob.arrayBuffer();
+                              matFolder.file(f.name, arrayBuffer);
+                              fileCount++;
+                          } catch (err) {
+                              console.warn(`Failed to read file ${f.id}`, err);
+                          }
                       }
                   }
               }
@@ -466,18 +477,7 @@ const MatterBoard: React.FC<Props> = ({
           }
 
           const content = await zip.generateAsync({ type: "blob" });
-          const url = URL.createObjectURL(content);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${matter.title}_${filterType}_Files.zip`;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          
-          setTimeout(() => {
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-          }, 1000);
+          saveAs(content, `${matter.title}_${filterType}_Files.zip`);
       } catch (e) {
           console.error(e);
           alert("导出失败");
