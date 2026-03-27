@@ -8,7 +8,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { getFile, saveFile } from './services/storage';
 import { generateTemplateFromText, generateMatterFromText } from './services/aiAnalysisService';
-import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, query, where } from './firebase';
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, where } from './firebase';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -427,6 +427,43 @@ const App: React.FC = () => {
     if (!isAuthReady) return;
 
     if (user) {
+      // Migrate local data to cloud
+      const migrateData = async () => {
+        try {
+          const localMattersData = localStorage.getItem(STORAGE_KEY);
+          if (localMattersData) {
+            const localMatters: Matter[] = JSON.parse(localMattersData);
+            for (const m of localMatters) {
+              if (m.userId === 'local' || !m.userId) {
+                const matterRef = doc(db, `users/${user.uid}/matters/${m.id}`);
+                const docSnap = await getDoc(matterRef);
+                if (!docSnap.exists()) {
+                  await setDoc(matterRef, { ...m, userId: user.uid });
+                }
+              }
+            }
+          }
+
+          const localTemplatesData = localStorage.getItem(TEMPLATE_KEY);
+          if (localTemplatesData) {
+            const localTemplates: Template[] = JSON.parse(localTemplatesData);
+            for (const t of localTemplates) {
+              if (t.userId === 'local' || !t.userId) {
+                const templateRef = doc(db, `users/${user.uid}/templates/${t.id}`);
+                const docSnap = await getDoc(templateRef);
+                if (!docSnap.exists()) {
+                  await setDoc(templateRef, { ...t, userId: user.uid });
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Migration failed:", error);
+        }
+      };
+      
+      migrateData();
+
       // Sync matters
       const mattersRef = collection(db, `users/${user.uid}/matters`);
       const unsubscribeMatters = onSnapshot(mattersRef, (snapshot) => {
@@ -636,13 +673,13 @@ const App: React.FC = () => {
               collectFileIds(templates);
 
               for (const fid of fileIds) {
-                  const fileBlob = await getFile(fid);
-                  if (fileBlob) {
-                      try {
+                  try {
+                      const fileBlob = await getFile(fid);
+                      if (fileBlob) {
                           assetsFolder.file(fid, fileBlob);
-                      } catch (err) {
-                          console.warn(`Failed to read file ${fid}`, err);
                       }
+                  } catch (err) {
+                      console.warn(`Failed to read file ${fid}`, err);
                   }
               }
           }
