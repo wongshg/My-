@@ -639,18 +639,7 @@ const App: React.FC = () => {
                   const fileBlob = await getFile(fid);
                   if (fileBlob) {
                       try {
-                          let arrayBuffer: ArrayBuffer;
-                          if (fileBlob.arrayBuffer) {
-                              arrayBuffer = await fileBlob.arrayBuffer();
-                          } else {
-                              arrayBuffer = await new Promise((resolve, reject) => {
-                                  const reader = new FileReader();
-                                  reader.onload = () => resolve(reader.result as ArrayBuffer);
-                                  reader.onerror = reject;
-                                  reader.readAsArrayBuffer(fileBlob);
-                              });
-                          }
-                          assetsFolder.file(fid, arrayBuffer);
+                          assetsFolder.file(fid, fileBlob);
                       } catch (err) {
                           console.warn(`Failed to read file ${fid}`, err);
                       }
@@ -661,9 +650,9 @@ const App: React.FC = () => {
           // 3. Generate Zip
           const content = await zip.generateAsync({ type: "blob" });
           saveAs(content, `Orbit_FullBackup_${new Date().toISOString().split('T')[0]}.zip`);
-      } catch (e) {
+      } catch (e: any) {
           console.error(e);
-          alert("备份失败，请稍后重试");
+          alert(`备份失败，请稍后重试: ${e.message || String(e)}`);
       } finally {
           setIsProcessingBackup(false);
       }
@@ -1223,17 +1212,8 @@ const App: React.FC = () => {
           try {
               await signInWithPopup(auth, googleProvider);
           } catch (error: any) {
-              console.error("Login failed with popup, trying redirect...", error);
-              if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.message?.includes('popup')) {
-                  try {
-                      await signInWithRedirect(auth, googleProvider);
-                  } catch (redirectError) {
-                      console.error("Redirect login failed", redirectError);
-                      alert("登录失败，请重试。");
-                  }
-              } else {
-                  alert("登录失败，请重试。");
-              }
+              console.error("Login failed", error);
+              alert(`登录失败: ${error.message || String(error)}`);
           }
       };
 
