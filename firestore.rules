@@ -1,0 +1,137 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/matters/{matterId}
+    // Document ID: matterId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - type: string (required)
+    //   - dueDate: number (optional)
+    //   - createdAt: number (required, immutable)
+    //   - lastUpdated: number (required)
+    //   - stages: list (required)
+    //   - archived: boolean (required)
+    //   - dismissedAttentionIds: list (optional)
+    //   - judgmentTimeline: list (required)
+    //   - currentSituation: string (optional)
+    //   - overallStatus: string (optional)
+    //   - latestAnalysis: map (optional)
+    //   - analysisHistory: list (optional)
+    //   - userId: string (required, immutable)
+    //
+    // Collection: users/{userId}/templates/{templateId}
+    // Document ID: templateId
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - description: string (required)
+    //   - stages: list (required)
+    //   - userId: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    function isValidList(field, maxSize) {
+      return request.resource.data[field] is list && request.resource.data[field].size() <= maxSize;
+    }
+
+    function isValidOptionalList(field, maxSize) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is list && request.resource.data[field].size() <= maxSize);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidMatter() {
+      return hasRequiredFields(['id', 'title', 'type', 'createdAt', 'lastUpdated', 'stages', 'archived', 'judgmentTimeline', 'userId']) &&
+             isValidString('id', 1, 100) &&
+             isValidString('title', 1, 200) &&
+             isValidString('type', 1, 100) &&
+             request.resource.data.createdAt is number &&
+             request.resource.data.lastUpdated is number &&
+             isValidList('stages', 500) &&
+             request.resource.data.archived is bool &&
+             isValidList('judgmentTimeline', 1000) &&
+             request.resource.data.userId == request.auth.uid &&
+             (!( 'dueDate' in request.resource.data ) || request.resource.data.dueDate is number) &&
+             isValidOptionalList('dismissedAttentionIds', 1000) &&
+             isValidOptionalString('currentSituation', 0, 5000) &&
+             isValidOptionalString('overallStatus', 0, 100) &&
+             (!( 'latestAnalysis' in request.resource.data ) || request.resource.data.latestAnalysis is map) &&
+             isValidOptionalList('analysisHistory', 1000);
+    }
+
+    function isValidTemplate() {
+      return hasRequiredFields(['id', 'name', 'description', 'stages', 'userId']) &&
+             isValidString('id', 1, 100) &&
+             isValidString('name', 1, 200) &&
+             isValidString('description', 0, 2000) &&
+             isValidList('stages', 500) &&
+             request.resource.data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId}/matters/{matterId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidMatter() && uidUnchanged();
+      allow update: if isOwner(userId) && isValidMatter() && uidNotModified() &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/templates/{templateId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidTemplate() && uidUnchanged();
+      allow update: if isOwner(userId) && isValidTemplate() && uidNotModified();
+      allow delete: if isOwner(userId);
+    }
+  }
+}

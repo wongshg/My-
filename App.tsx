@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { getFile, saveFile } from './services/storage';
 import { generateTemplateFromText, generateMatterFromText } from './services/aiAnalysisService';
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, query, where } from './firebase';
 
 // --- Local Storage Helpers ---
 const STORAGE_KEY = 'opus_matters_v1';
@@ -296,6 +297,8 @@ const TemplateManagerModal: React.FC<{
 
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<any>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [matters, setMatters] = useState<Matter[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeMatterId, setActiveMatterId] = useState<string | null>(null);
@@ -361,14 +364,97 @@ const App: React.FC = () => {
 
   }, [theme]);
 
+  enum OperationType {
+    CREATE = 'create',
+    UPDATE = 'update',
+    DELETE = 'delete',
+    LIST = 'list',
+    GET = 'get',
+    WRITE = 'write',
+  }
+
+  interface FirestoreErrorInfo {
+    error: string;
+    operationType: OperationType;
+    path: string | null;
+    authInfo: {
+      userId: string | undefined;
+      email: string | null | undefined;
+      emailVerified: boolean | undefined;
+      isAnonymous: boolean | undefined;
+      tenantId: string | null | undefined;
+      providerInfo: {
+        providerId: string;
+        displayName: string | null;
+        email: string | null;
+        photoUrl: string | null;
+      }[];
+    }
+  }
+
+  const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+    const errInfo: FirestoreErrorInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    alert("数据同步失败，请检查网络或刷新页面重试。");
+  };
+
   useEffect(() => {
-    const loadedMatters = loadMatters();
-    setMatters(loadedMatters);
-    setTemplates(loadTemplates());
-    
-    // Check notifications once on load
-    checkDueTasks(loadedMatters);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    if (user) {
+      // Sync matters
+      const mattersRef = collection(db, `users/${user.uid}/matters`);
+      const unsubscribeMatters = onSnapshot(mattersRef, (snapshot) => {
+        const loadedMatters = snapshot.docs.map(doc => doc.data() as Matter);
+        setMatters(loadedMatters);
+        checkDueTasks(loadedMatters);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}/matters`);
+      });
+
+      // Sync templates
+      const templatesRef = collection(db, `users/${user.uid}/templates`);
+      const unsubscribeTemplates = onSnapshot(templatesRef, (snapshot) => {
+        const loadedTemplates = snapshot.docs.map(doc => doc.data() as Template);
+        setTemplates(loadedTemplates);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}/templates`);
+      });
+
+      return () => {
+        unsubscribeMatters();
+        unsubscribeTemplates();
+      };
+    } else {
+      setMatters(loadMatters());
+      setTemplates(loadTemplates());
+    }
+  }, [user, isAuthReady]);
 
   const requestNotificationPermission = async () => {
      if (!('Notification' in window)) return;
@@ -380,7 +466,7 @@ const App: React.FC = () => {
      }
   };
 
-  const handleCreateMatter = (template: Template, title: string, dueDate: string) => {
+  const handleCreateMatter = async (template: Template, title: string, dueDate: string) => {
     const newMatter: Matter = {
       id: uuid(),
       title: title || `${template.name} - ${new Date().toLocaleDateString()}`,
@@ -390,16 +476,29 @@ const App: React.FC = () => {
       lastUpdated: Date.now(),
       stages: JSON.parse(JSON.stringify(template.stages)), // Deep copy
       archived: false,
-      judgmentTimeline: []
+      judgmentTimeline: [],
+      userId: user?.uid || 'local'
     };
-    const updated = [newMatter, ...matters];
-    setMatters(updated);
-    saveMatters(updated);
-    setIsNewMatterModalOpen(false);
-    setActiveMatterId(newMatter.id);
+    
+    if (!user) {
+      const updatedList = [...matters, newMatter];
+      setMatters(updatedList);
+      saveMatters(updatedList);
+      setIsNewMatterModalOpen(false);
+      setActiveMatterId(newMatter.id);
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, `users/${user.uid}/matters`, newMatter.id), newMatter);
+      setIsNewMatterModalOpen(false);
+      setActiveMatterId(newMatter.id);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/matters/${newMatter.id}`);
+    }
   };
 
-  const handleCreateMatterDirectly = (title: string, dueDate: string | null, stages: { title: string; tasks: { title: string }[] }[], isSimple: boolean) => {
+  const handleCreateMatterDirectly = async (title: string, dueDate: string | null, stages: { title: string; tasks: { title: string }[] }[], isSimple: boolean) => {
       const newMatter: Matter = {
           id: uuid(),
           title: title,
@@ -423,31 +522,64 @@ const App: React.FC = () => {
           archived: false,
           judgmentTimeline: [],
           overallStatus: TaskStatus.PENDING,
-          currentSituation: "AI 自动生成事项，请补充细节。"
+          currentSituation: "AI 自动生成事项，请补充细节。",
+          userId: user?.uid || 'local'
       };
       
-      const updated = [newMatter, ...matters];
-      setMatters(updated);
-      saveMatters(updated);
-      setIsNewMatterModalOpen(false);
-      setActiveMatterId(newMatter.id);
+      if (!user) {
+          const updatedList = [...matters, newMatter];
+          setMatters(updatedList);
+          saveMatters(updatedList);
+          setIsNewMatterModalOpen(false);
+          setActiveMatterId(newMatter.id);
+          return;
+      }
+
+      try {
+        await setDoc(doc(db, `users/${user.uid}/matters`, newMatter.id), newMatter);
+        setIsNewMatterModalOpen(false);
+        setActiveMatterId(newMatter.id);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/matters/${newMatter.id}`);
+      }
   };
 
-  const handleUpdateMatter = (updatedMatter: Matter) => {
-    const updatedList = matters.map(m => m.id === updatedMatter.id ? updatedMatter : m);
-    setMatters(updatedList);
-    
-    if (!editingTemplateId) {
-       saveMatters(updatedList);
+  const handleUpdateMatter = async (updatedMatter: Matter) => {
+    if (!user) {
+      const updatedList = matters.map(m => m.id === updatedMatter.id ? updatedMatter : m);
+      setMatters(updatedList);
+      if (!editingTemplateId) saveMatters(updatedList);
+      return;
+    }
+
+    try {
+      if (editingTemplateId) {
+        const updatedList = matters.map(m => m.id === updatedMatter.id ? updatedMatter : m);
+        setMatters(updatedList);
+      } else {
+        await setDoc(doc(db, `users/${user.uid}/matters`, updatedMatter.id), updatedMatter);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/matters/${updatedMatter.id}`);
     }
   };
 
-  const handleDeleteMatter = (id: string) => {
+  const handleDeleteMatter = async (id: string) => {
     if (confirm('确定要删除这个事项吗？操作无法撤销。')) {
-      const updated = matters.filter(m => m.id !== id);
-      setMatters(updated);
-      saveMatters(updated);
-      if (activeMatterId === id) setActiveMatterId(null);
+      if (!user) {
+        const updatedList = matters.filter(m => m.id !== id);
+        setMatters(updatedList);
+        saveMatters(updatedList);
+        if (activeMatterId === id) setActiveMatterId(null);
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/matters`, id));
+        if (activeMatterId === id) setActiveMatterId(null);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/matters/${id}`);
+      }
     }
   };
 
@@ -477,15 +609,22 @@ const App: React.FC = () => {
               const fileIds = new Set<string>();
               
               const collectFileIds = (list: any[]) => {
+                  if (!list || !Array.isArray(list)) return;
                   list.forEach(m => {
+                      if (!m || !m.stages || !Array.isArray(m.stages)) return;
                       m.stages.forEach((s: Stage) => {
+                          if (!s || !s.tasks || !Array.isArray(s.tasks)) return;
                           s.tasks.forEach((t: Task) => {
+                              if (!t || !t.materials || !Array.isArray(t.materials)) return;
                               t.materials.forEach(mat => {
+                                  if (!mat) return;
                                   // Legacy
                                   if (mat.fileId) fileIds.add(mat.fileId);
                                   // New
-                                  if (mat.files) {
-                                      mat.files.forEach(f => fileIds.add(f.id));
+                                  if (mat.files && Array.isArray(mat.files)) {
+                                      mat.files.forEach(f => {
+                                          if (f && f.id) fileIds.add(f.id);
+                                      });
                                   }
                               });
                           });
@@ -500,7 +639,17 @@ const App: React.FC = () => {
                   const fileBlob = await getFile(fid);
                   if (fileBlob) {
                       try {
-                          const arrayBuffer = await fileBlob.arrayBuffer();
+                          let arrayBuffer: ArrayBuffer;
+                          if (fileBlob.arrayBuffer) {
+                              arrayBuffer = await fileBlob.arrayBuffer();
+                          } else {
+                              arrayBuffer = await new Promise((resolve, reject) => {
+                                  const reader = new FileReader();
+                                  reader.onload = () => resolve(reader.result as ArrayBuffer);
+                                  reader.onerror = reject;
+                                  reader.readAsArrayBuffer(fileBlob);
+                              });
+                          }
                           assetsFolder.file(fid, arrayBuffer);
                       } catch (err) {
                           console.warn(`Failed to read file ${fid}`, err);
@@ -517,6 +666,34 @@ const App: React.FC = () => {
           alert("备份失败，请稍后重试");
       } finally {
           setIsProcessingBackup(false);
+      }
+  };
+
+  const handleRescueExport = () => {
+      try {
+          const data = {
+              version: 1,
+              date: new Date().toISOString(),
+              matters,
+              templates
+          };
+          const jsonStr = JSON.stringify(data, null, 2);
+          const blob = new Blob([jsonStr], { type: "application/json" });
+          saveAs(blob, `Orbit_RescueBackup_${new Date().toISOString().split('T')[0]}.json`);
+      } catch (e) {
+          console.error("Rescue export failed", e);
+          alert("紧急备份失败，请尝试复制文本");
+      }
+  };
+
+  const handleCopyToClipboard = async () => {
+      try {
+          const data = { version: 1, date: new Date().toISOString(), matters, templates };
+          await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+          alert("数据已成功复制到剪贴板！您可以将其粘贴到记事本或备忘录中保存。");
+      } catch (e) {
+          console.error("Copy failed", e);
+          alert("复制失败，请手动检查浏览器权限。");
       }
   };
 
@@ -554,13 +731,28 @@ const App: React.FC = () => {
           }
 
           // 3. Restore State
-          if (json.matters && Array.isArray(json.matters)) {
-              setMatters(json.matters);
-              saveMatters(json.matters);
-          }
-          if (json.templates && Array.isArray(json.templates)) {
-              setTemplates(json.templates);
-              saveTemplates(json.templates);
+          if (!user) {
+              if (json.matters && Array.isArray(json.matters)) {
+                  setMatters(json.matters);
+                  saveMatters(json.matters);
+              }
+              if (json.templates && Array.isArray(json.templates)) {
+                  setTemplates(json.templates);
+                  saveTemplates(json.templates);
+              }
+          } else {
+              if (json.matters && Array.isArray(json.matters)) {
+                  for (const m of json.matters) {
+                      const matterToSave = { ...m, userId: user.uid };
+                      await setDoc(doc(db, `users/${user.uid}/matters`, matterToSave.id), matterToSave);
+                  }
+              }
+              if (json.templates && Array.isArray(json.templates)) {
+                  for (const t of json.templates) {
+                      const templateToSave = { ...t, userId: user.uid };
+                      await setDoc(doc(db, `users/${user.uid}/templates`, templateToSave.id), templateToSave);
+                  }
+              }
           }
 
           alert(`恢复成功！\n- 事项：${json.matters?.length || 0}\n- 模板：${json.templates?.length || 0}\n- 文件：${fileCount}`);
@@ -584,7 +776,7 @@ const App: React.FC = () => {
     setIsSaveTemplateModalOpen(true);
   };
 
-  const confirmSaveTemplate = () => {
+  const confirmSaveTemplate = async () => {
     if (!matterToTemplate || !templateName) return;
     
     // Clean up stages but PRESERVE FILES if they exist
@@ -607,18 +799,30 @@ const App: React.FC = () => {
       id: uuid(),
       name: templateName,
       description: `基于 "${matterToTemplate.title}" 创建的自定义模板`,
-      stages: cleanStages
+      stages: cleanStages,
+      userId: user?.uid || 'local'
     };
 
-    const updatedTemplates = [...templates, newTemplate];
-    
-    saveTemplates(updatedTemplates);
-    setTemplates(updatedTemplates);
-    
-    setIsSaveTemplateModalOpen(false);
-    setMatterToTemplate(null);
-    setTemplateName('');
-    alert("模板保存成功！");
+    if (!user) {
+      const updatedTemplates = [...templates, newTemplate];
+      setTemplates(updatedTemplates);
+      saveTemplates(updatedTemplates);
+      setIsSaveTemplateModalOpen(false);
+      setMatterToTemplate(null);
+      setTemplateName('');
+      alert("模板保存成功！");
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, `users/${user.uid}/templates`, newTemplate.id), newTemplate);
+      setIsSaveTemplateModalOpen(false);
+      setMatterToTemplate(null);
+      setTemplateName('');
+      alert("模板保存成功！");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/templates/${newTemplate.id}`);
+    }
   };
 
   // --- Full Template Editing Logic ---
@@ -633,7 +837,8 @@ const App: React.FC = () => {
           createdAt: Date.now(),
           lastUpdated: Date.now(),
           archived: false,
-          judgmentTimeline: []
+          judgmentTimeline: [],
+          userId: user?.uid || ''
       };
 
       // Add to matters list temporarily so Board can render it
@@ -643,7 +848,7 @@ const App: React.FC = () => {
       setIsTemplateManagerOpen(false);
   };
 
-  const handleSaveTemplateChanges = (m: Matter) => {
+  const handleSaveTemplateChanges = async (m: Matter) => {
       if (!editingTemplateId) return;
 
       // Clean up stages
@@ -661,28 +866,41 @@ const App: React.FC = () => {
           }))
       }));
 
-      const updatedTemplates = templates.map(t => {
-          if (t.id === editingTemplateId) {
-              return {
-                  ...t,
-                  name: m.title, // Matter Title -> Template Name
-                  description: m.type, // Matter Type -> Template Description
-                  stages: cleanStages
-              };
-          }
-          return t;
-      });
+      const templateToUpdate = templates.find(t => t.id === editingTemplateId);
+      if (!templateToUpdate) return;
 
-      saveTemplates(updatedTemplates);
-      setTemplates(updatedTemplates);
+      const updatedTemplate = {
+          ...templateToUpdate,
+          name: m.title, // Matter Title -> Template Name
+          description: m.type, // Matter Type -> Template Description
+          stages: cleanStages,
+          userId: user?.uid || 'local'
+      };
 
-      // Cleanup
-      setEditingTemplateId(null);
-      setActiveMatterId(null);
-      // Remove temp matter
-      setMatters(prev => prev.filter(pm => pm.id !== m.id));
-      
-      alert("模板修改已保存！");
+      if (!user) {
+          const updatedTemplates = templates.map(t => t.id === updatedTemplate.id ? updatedTemplate : t);
+          setTemplates(updatedTemplates);
+          saveTemplates(updatedTemplates);
+          setEditingTemplateId(null);
+          setActiveMatterId(null);
+          setMatters(prev => prev.filter(pm => pm.id !== m.id));
+          alert("模板修改已保存！");
+          return;
+      }
+
+      try {
+          await setDoc(doc(db, `users/${user.uid}/templates`, updatedTemplate.id), updatedTemplate);
+          
+          // Cleanup
+          setEditingTemplateId(null);
+          setActiveMatterId(null);
+          // Remove temp matter
+          setMatters(prev => prev.filter(pm => pm.id !== m.id));
+          
+          alert("模板修改已保存！");
+      } catch (error) {
+          handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/templates/${updatedTemplate.id}`);
+      }
   };
 
   const cancelTemplateEdit = () => {
@@ -693,35 +911,65 @@ const App: React.FC = () => {
       setIsTemplateManagerOpen(true);
   };
 
-  const createBlankTemplate = () => {
+  const createBlankTemplate = async () => {
      const newTemplate: Template = {
         id: uuid(),
         name: "新建空白模板",
         description: "自定义空白模板",
         stages: [
             { id: uuid(), title: "阶段一", tasks: [] }
-        ]
+        ],
+        userId: user?.uid || 'local'
      };
 
-     const updatedTemplates = [...templates, newTemplate];
-     saveTemplates(updatedTemplates);
-     setTemplates(updatedTemplates);
+     if (!user) {
+         const updatedTemplates = [...templates, newTemplate];
+         setTemplates(updatedTemplates);
+         saveTemplates(updatedTemplates);
+         return;
+     }
+
+     try {
+       await setDoc(doc(db, `users/${user.uid}/templates`, newTemplate.id), newTemplate);
+     } catch (error) {
+       handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/templates/${newTemplate.id}`);
+     }
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
+  const handleDeleteTemplate = async (templateId: string) => {
     if(!confirm("确定删除此模板吗？")) return;
-    const updated = templates.filter(t => t.id !== templateId);
-    saveTemplates(updated);
-    setTemplates(updated);
+
+    if (!user) {
+        const updatedTemplates = templates.filter(t => t.id !== templateId);
+        setTemplates(updatedTemplates);
+        saveTemplates(updatedTemplates);
+        return;
+    }
+
+    try {
+      await deleteDoc(doc(db, `users/${user.uid}/templates`, templateId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/templates/${templateId}`);
+    }
   };
 
-  const handleAITemplateCreated = (t: Template) => {
-      const updatedTemplates = [...templates, t];
-      saveTemplates(updatedTemplates);
-      setTemplates(updatedTemplates);
-      alert("AI 模板生成成功！");
-      // Optional: Auto open edit mode
-      // handleEditTemplate(t);
+  const handleAITemplateCreated = async (t: Template) => {
+      const newTemplate = { ...t, userId: user?.uid || 'local' };
+      
+      if (!user) {
+          const updatedTemplates = [...templates, newTemplate];
+          setTemplates(updatedTemplates);
+          saveTemplates(updatedTemplates);
+          alert("AI 模板生成成功！");
+          return;
+      }
+
+      try {
+        await setDoc(doc(db, `users/${user.uid}/templates`, newTemplate.id), newTemplate);
+        alert("AI 模板生成成功！");
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/templates/${newTemplate.id}`);
+      }
   };
 
   // --- Views ---
@@ -971,6 +1219,33 @@ const App: React.FC = () => {
           }, 500);
       };
 
+      const handleLogin = async () => {
+          try {
+              await signInWithPopup(auth, googleProvider);
+          } catch (error: any) {
+              console.error("Login failed with popup, trying redirect...", error);
+              if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.message?.includes('popup')) {
+                  try {
+                      await signInWithRedirect(auth, googleProvider);
+                  } catch (redirectError) {
+                      console.error("Redirect login failed", redirectError);
+                      alert("登录失败，请重试。");
+                  }
+              } else {
+                  alert("登录失败，请重试。");
+              }
+          }
+      };
+
+      const handleLogout = async () => {
+          try {
+              await signOut(auth);
+          } catch (error) {
+              console.error("Logout failed", error);
+              alert("登出失败，请重试。");
+          }
+      };
+
       return (
       <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => !isProcessingBackup && setIsSettingsOpen(false)}>
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scaleIn flex flex-col max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -979,6 +1254,50 @@ const App: React.FC = () => {
                     <Settings size={20} className="text-slate-500 dark:text-slate-400" /> 设置
                 </h3>
                 <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+              </div>
+
+              {/* Account Section */}
+              <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-8">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                      <Sparkles size={16} className="text-purple-500"/> 账号与同步
+                  </h4>
+                  <div className="space-y-4">
+                      {user ? (
+                          <div className="flex flex-col gap-3">
+                              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                  {user.photoURL && <img src={user.photoURL} alt="Avatar" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />}
+                                  <div>
+                                      <div className="text-sm font-medium text-slate-800 dark:text-white">{user.displayName || '已登录用户'}</div>
+                                      <div className="text-xs text-slate-500">{user.email}</div>
+                                  </div>
+                              </div>
+                              <button 
+                                  onClick={handleLogout}
+                                  className="w-full py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                              >
+                                  退出登录
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="flex flex-col gap-3">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  登录后即可开启云端数据同步，您的事项和模板将安全地保存在云端，随时随地访问。
+                              </p>
+                              <button 
+                                  onClick={handleLogin}
+                                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                              >
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                  </svg>
+                                  使用 Google 账号登录
+                              </button>
+                          </div>
+                      )}
+                  </div>
               </div>
 
               {/* AI Config Section */}
@@ -1038,6 +1357,23 @@ const App: React.FC = () => {
                           {isProcessingBackup ? '处理中...' : <><Download size={16} /> 导出完整备份 (.zip)</>}
                       </button>
                       
+                      <div className="flex gap-2 w-full">
+                          <button 
+                            onClick={handleRescueExport}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-lg font-medium hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors text-[11px]"
+                            title="仅导出项目和模板数据，不包含附件"
+                          >
+                              <FileText size={14} /> 紧急备份 (仅文本)
+                          </button>
+                          <button 
+                            onClick={handleCopyToClipboard}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-[11px]"
+                            title="将所有数据复制到剪贴板"
+                          >
+                              <Check size={14} /> 复制到剪贴板
+                          </button>
+                      </div>
+
                       <div className="relative">
                           <button 
                             disabled={isProcessingBackup}
