@@ -190,7 +190,7 @@ const AITemplateGeneratorModal: React.FC<{
         <div className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg p-6 animate-scaleIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
                         <Sparkles size={20} /> AI 智能生成模板
                     </h3>
                     <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
@@ -199,7 +199,7 @@ const AITemplateGeneratorModal: React.FC<{
                     粘贴您的工作总结、流程说明或操作手册片段，AI 将自动分析并生成结构化的事项模板。
                 </p>
                 <textarea 
-                    className="w-full h-40 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                    className="w-full h-40 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-[#F6F7F8] dark:bg-slate-800 text-sm focus:ring-2 focus:ring-rose-500 outline-none resize-none mb-4"
                     placeholder="例如：完成一家公司注销通常需要先进行内部决议，然后成立清算组，发布公告45天。之后清理资产，最后去工商局注销..."
                     value={text}
                     onChange={e => setText(e.target.value)}
@@ -207,7 +207,7 @@ const AITemplateGeneratorModal: React.FC<{
                 <button 
                     onClick={handleGenerate}
                     disabled={!text.trim() || isGenerating}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                     {isGenerating ? <><Sparkles size={16} className="animate-spin"/> 分析生成中...</> : '开始生成'}
                 </button>
@@ -243,23 +243,23 @@ const TemplateManagerModal: React.FC<{
                         <div className="flex justify-between items-center">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">已录入模板 (全部)</h3>
                             <div className="flex gap-3">
-                                <button onClick={onAIImport} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium">
+                                <button onClick={onAIImport} className="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-medium">
                                     <Sparkles size={12} /> AI 导入
                                 </button>
-                                <button onClick={onCreate} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                <button onClick={onCreate} className="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1">
                                     <Plus size={12} /> 新建空白
                                 </button>
                             </div>
                         </div>
 
                         {templates.length === 0 && (
-                            <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                            <div className="text-sm text-slate-400 italic bg-[#F6F7F8] dark:bg-slate-800 p-4 rounded-lg">
                                 暂无模板。
                             </div>
                         )}
 
                         {templates.map(t => (
-                            <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 group transition-all">
+                            <div key={t.id} className="flex justify-between items-start p-3 border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-500 group transition-all">
                                 <div className="flex-1">
                                     <div className="font-semibold text-slate-800 dark:text-slate-200">{t.name}</div>
                                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.description}</div>
@@ -268,7 +268,7 @@ const TemplateManagerModal: React.FC<{
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onEdit(t)}
-                                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-1 text-xs"
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-1 text-xs"
                                         title="编辑详细内容"
                                     >
                                         <Edit2 size={14} /> 编辑
@@ -1033,7 +1033,7 @@ const App: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full flex overflow-hidden max-h-[85vh]">
           
           {/* Left Panel: Tabs */}
-          <div className="w-5/12 border-r border-slate-100 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-slate-950">
+          <div className="w-5/12 border-r border-slate-100 dark:border-slate-800 flex flex-col bg-[#F6F7F8] dark:bg-slate-950">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                <h2 className="text-lg font-bold text-slate-800 dark:text-white">选择创建方式</h2>
             </div>
@@ -1043,7 +1043,7 @@ const App: React.FC = () => {
                     onClick={() => setMode('TEMPLATE')}
                     className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-all ${mode === 'TEMPLATE' ? 'bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-100 dark:hover:bg-slate-900'}`}
                 >
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><LayoutTemplate size={18} /></div>
+                    <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-full text-rose-600 dark:text-rose-400"><LayoutTemplate size={18} /></div>
                     <div>
                         <div className="font-bold text-sm text-slate-800 dark:text-slate-100">使用模板创建</div>
                         <div className="text-xs text-slate-500">适用于标准化、重复性工作流程</div>
@@ -1052,9 +1052,9 @@ const App: React.FC = () => {
 
                 <button 
                     onClick={() => setMode('AI')}
-                    className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-all ${mode === 'AI' ? 'bg-white dark:bg-slate-800 shadow-sm border border-indigo-200 dark:border-indigo-900' : 'hover:bg-slate-100 dark:hover:bg-slate-900'}`}
+                    className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-all ${mode === 'AI' ? 'bg-white dark:bg-slate-800 shadow-sm border border-rose-200 dark:border-rose-900' : 'hover:bg-slate-100 dark:hover:bg-slate-900'}`}
                 >
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full text-indigo-600 dark:text-indigo-400"><Sparkles size={18} /></div>
+                    <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-full text-rose-600 dark:text-rose-400"><Sparkles size={18} /></div>
                     <div>
                         <div className="font-bold text-sm text-slate-800 dark:text-slate-100">AI 智能录入</div>
                         <div className="text-xs text-slate-500">自然语言描述，自动生成非标事项</div>
@@ -1069,7 +1069,7 @@ const App: React.FC = () => {
                         onClick={() => setSelectedTemplate({ id: 'custom', name: '空白通用事项', description: '从零开始记录，无预设流程', stages: [] })}
                         className={`border border-dashed rounded-lg p-3 cursor-pointer transition-all ${
                             selectedTemplate?.id === 'custom' 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500' 
+                            ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 ring-1 ring-rose-500' 
                             : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-white dark:hover:bg-slate-900'
                         }`}
                         >
@@ -1085,12 +1085,12 @@ const App: React.FC = () => {
                         onClick={() => setSelectedTemplate(t)}
                         className={`border rounded-lg p-3 cursor-pointer transition-all relative group ${
                             selectedTemplate?.id === t.id 
-                            ? 'border-blue-500 bg-white dark:bg-slate-800 ring-1 ring-blue-500 shadow-md' 
-                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-slate-800 shadow-sm'
+                            ? 'border-rose-500 bg-white dark:bg-slate-800 ring-1 ring-rose-500 shadow-md' 
+                            : 'border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-500 bg-white dark:bg-slate-800 shadow-sm'
                         }`}
                         >
                         <div className="flex justify-between items-start">
-                            <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-800 dark:text-slate-200'}`}>{t.name}</h3>
+                            <h3 className={`font-semibold text-sm ${selectedTemplate?.id === t.id ? 'text-rose-700 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>{t.name}</h3>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{t.description}</p>
                         </div>
@@ -1113,7 +1113,7 @@ const App: React.FC = () => {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="例如：XX项目公司注销"
-                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
+                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition-shadow bg-transparent dark:text-white"
                         />
                     </div>
                     
@@ -1123,13 +1123,13 @@ const App: React.FC = () => {
                         type="date" 
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-transparent dark:text-white"
+                        className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition-shadow bg-transparent dark:text-white"
                         />
                         <p className="text-xs text-slate-400 mt-2">临期前 7 天将在工作台置顶提醒。</p>
                     </div>
 
                     {selectedTemplate && (
-                        <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                        <div className="bg-[#F6F7F8] dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
                         已选模板：<span className="font-bold text-slate-800 dark:text-white">{selectedTemplate.name}</span>
                         <div className="mt-1 text-xs text-slate-400">包含 {selectedTemplate.stages.length} 个阶段</div>
                         </div>
@@ -1160,21 +1160,21 @@ const App: React.FC = () => {
                     <div className="flex gap-4 mb-4">
                         <button 
                             onClick={() => setAiModeType('SIMPLE')}
-                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'SIMPLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'SIMPLE' ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-700 hover:bg-[#F6F7F8] dark:hover:bg-slate-800'}`}
                         >
                             <div className="flex items-center gap-2 mb-1">
-                                <ListChecks size={16} className={aiModeType === 'SIMPLE' ? 'text-indigo-600' : 'text-slate-400'}/>
-                                <span className={`text-sm font-bold ${aiModeType === 'SIMPLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>简单任务模式</span>
+                                <ListChecks size={16} className={aiModeType === 'SIMPLE' ? 'text-rose-600' : 'text-slate-400'}/>
+                                <span className={`text-sm font-bold ${aiModeType === 'SIMPLE' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-700 dark:text-slate-300'}`}>简单任务模式</span>
                             </div>
                             <p className="text-xs text-slate-500">生成单个待办清单，适合短期任务</p>
                         </button>
                         <button 
                             onClick={() => setAiModeType('COMPLEX')}
-                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'COMPLEX' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            className={`flex-1 p-3 rounded-lg border text-left transition-all ${aiModeType === 'COMPLEX' ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-700 hover:bg-[#F6F7F8] dark:hover:bg-slate-800'}`}
                         >
                             <div className="flex items-center gap-2 mb-1">
-                                <Layers size={16} className={aiModeType === 'COMPLEX' ? 'text-indigo-600' : 'text-slate-400'}/>
-                                <span className={`text-sm font-bold ${aiModeType === 'COMPLEX' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>复杂项目模式</span>
+                                <Layers size={16} className={aiModeType === 'COMPLEX' ? 'text-rose-600' : 'text-slate-400'}/>
+                                <span className={`text-sm font-bold ${aiModeType === 'COMPLEX' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-700 dark:text-slate-300'}`}>复杂项目模式</span>
                             </div>
                             <p className="text-xs text-slate-500">自动拆解多个阶段，适合长期项目</p>
                         </button>
@@ -1182,14 +1182,14 @@ const App: React.FC = () => {
 
                     <div className="flex-1 flex flex-col">
                         <textarea 
-                            className="w-full h-40 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                            className="w-full h-40 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-[#F6F7F8] dark:bg-slate-800 text-sm focus:ring-2 focus:ring-rose-500 outline-none resize-none mb-4"
                             placeholder={aiModeType === 'SIMPLE' ? "例如：下周五前要交一份市场调研报告，需要先搜集数据，然后写大纲，最后完善PPT。" : "例如：启动新公司设立流程，预计耗时2个月。需要先核名，然后去工商局交材料，最后刻章备案。"}
                             value={aiInput}
                             onChange={(e) => setAiInput(e.target.value)}
                         />
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
-                            <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1"><Zap size={12}/> AI 将自动识别：</h4>
-                            <ul className="text-xs text-indigo-800 dark:text-indigo-300 list-disc list-inside space-y-0.5 ml-1">
+                        <div className="bg-rose-50 dark:bg-rose-900/20 p-3 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                            <h4 className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1"><Zap size={12}/> AI 将自动识别：</h4>
+                            <ul className="text-xs text-rose-800 dark:text-rose-300 list-disc list-inside space-y-0.5 ml-1">
                                 <li>事项标题与关键描述</li>
                                 <li>截止日期 (如提及)</li>
                                 <li>{aiModeType === 'SIMPLE' ? '生成单一待办清单' : '生成分阶段执行计划'}</li>
@@ -1207,7 +1207,7 @@ const App: React.FC = () => {
                         <button 
                             onClick={handleAISubmit}
                             disabled={!aiInput.trim() || isGeneratingMatter}
-                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-rose-200 dark:shadow-none"
                         >
                             {isGeneratingMatter ? <><Sparkles size={16} className="animate-spin"/> 正在生成...</> : '一键生成事项'}
                         </button>
@@ -1281,7 +1281,7 @@ const App: React.FC = () => {
                   <div className="space-y-4">
                       {user ? (
                           <div className="flex flex-col gap-3">
-                              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                              <div className="flex items-center gap-3 p-3 bg-[#F6F7F8] dark:bg-slate-800 rounded-lg">
                                   {user.photoURL && <img src={user.photoURL} alt="Avatar" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />}
                                   <div>
                                       <div className="text-sm font-medium text-slate-800 dark:text-white">{user.displayName || '已登录用户'}</div>
@@ -1302,7 +1302,7 @@ const App: React.FC = () => {
                               </p>
                               <button 
                                   onClick={handleLogin}
-                                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                  className="w-full py-2.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 transition-colors flex items-center justify-center gap-2"
                               >
                                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                                       <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1320,13 +1320,13 @@ const App: React.FC = () => {
               {/* AI Config Section */}
               <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-8">
                   <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                      <Server size={16} className="text-blue-500"/> AI 服务配置
+                      <Server size={16} className="text-rose-500"/> AI 服务配置
                   </h4>
                   <div className="space-y-4">
                       <div>
                           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">API Host (Base URL)</label>
                           <input 
-                              className="w-full p-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full p-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-[#F6F7F8] dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none"
                               value={apiHost}
                               onChange={(e) => setApiHost(e.target.value)}
                               placeholder="https://api.chatanywhere.tech"
@@ -1337,7 +1337,7 @@ const App: React.FC = () => {
                           <div className="relative">
                               <input 
                                   type="password"
-                                  className="w-full p-2.5 pl-9 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                  className="w-full p-2.5 pl-9 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-[#F6F7F8] dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none"
                                   value={apiKey}
                                   onChange={(e) => setApiKey(e.target.value)}
                                   placeholder="sk-..."
@@ -1369,7 +1369,7 @@ const App: React.FC = () => {
                       <button 
                         onClick={handleExportData}
                         disabled={isProcessingBackup}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50 text-xs"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-lg font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors disabled:opacity-50 text-xs"
                       >
                           {isProcessingBackup ? '处理中...' : <><Download size={16} /> 导出完整备份 (.zip)</>}
                       </button>
@@ -1384,7 +1384,7 @@ const App: React.FC = () => {
                           </button>
                           <button 
                             onClick={handleCopyToClipboard}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-[11px]"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-[#F6F7F8] dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-[11px]"
                             title="将所有数据复制到剪贴板"
                           >
                               <Check size={14} /> 复制到剪贴板
@@ -1394,7 +1394,7 @@ const App: React.FC = () => {
                       <div className="relative">
                           <button 
                             disabled={isProcessingBackup}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 text-xs"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#F6F7F8] dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 text-xs"
                           >
                              {isProcessingBackup ? '处理中...' : <><Upload size={16} /> 恢复数据 (.zip)</>}
                           </button>
@@ -1475,13 +1475,13 @@ const App: React.FC = () => {
                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">模板名称</label>
                  <input 
                     autoFocus
-                    className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-2 border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white rounded focus:ring-2 focus:ring-rose-500 outline-none"
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
                  />
                  <p className="text-xs text-slate-500 mt-2">
                    将保存当前事项的阶段、任务结构。状态和备注信息不会被保存。<br/>
-                   <span className="text-blue-500 font-medium">注意：所有当前附件将自动转换为“参考模板”资料。</span>
+                   <span className="text-rose-500 font-medium">注意：所有当前附件将自动转换为“参考模板”资料。</span>
                  </p>
               </div>
               <div className="flex justify-end gap-2">

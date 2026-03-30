@@ -354,7 +354,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
           case TaskStatus.BLOCKED: return 'bg-amber-50 border-amber-200 focus-within:ring-amber-200 focus-within:border-amber-400 dark:bg-amber-900/10 dark:border-amber-800';
           case TaskStatus.EXCEPTION: return 'bg-purple-50 border-purple-200 focus-within:ring-purple-200 focus-within:border-purple-400 dark:bg-purple-900/10 dark:border-purple-800';
           case TaskStatus.SKIPPED: return 'bg-gray-50 border-gray-200 focus-within:ring-gray-200 focus-within:border-gray-400 dark:bg-gray-800/30 dark:border-gray-700';
-          default: return 'bg-slate-50 border-slate-200 focus-within:ring-blue-100 focus-within:border-blue-300 dark:bg-slate-800 dark:border-slate-700';
+          default: return 'bg-[#F6F7F8] border-slate-200 focus-within:ring-rose-100 focus-within:border-rose-300 dark:bg-slate-800 dark:border-slate-700';
       }
   };
 
@@ -414,15 +414,15 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   }}
                   className={`group rounded-lg border transition-all relative p-2.5 ${
                       dragActiveId === m.id 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 border-dashed z-10' 
+                      ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/30 border-dashed z-10' 
                       : sortDragId === m.id
                       ? 'opacity-50 border-dashed border-slate-300'
-                      : 'border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
+                      : 'border-slate-100 dark:border-slate-700 hover:border-rose-100 dark:hover:border-rose-800 hover:bg-rose-50/30 dark:hover:bg-rose-900/10'
                   }`}
                >
                   {dragActiveId === m.id && (
                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 rounded-lg pointer-events-none z-20">
-                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2"><Upload size={16}/> 松开以上传</span>
+                         <span className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2"><Upload size={16}/> 松开以上传</span>
                      </div>
                   )}
 
@@ -435,7 +435,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
 
                       {/* Status Icon / Type Icon */}
                       {isRef ? (
-                          <div className="shrink-0 text-blue-500 dark:text-blue-400 opacity-80">
+                          <div className="shrink-0 text-rose-500 dark:text-rose-400 opacity-80">
                               <BookOpen size={16} />
                           </div>
                       ) : (
@@ -460,7 +460,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                       {/* Actions */}
                       {(!isRef || isTemplateMode) && (
                         <>
-                            <label className="cursor-pointer text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-white dark:hover:bg-slate-800" title="上传文件">
+                            <label className="cursor-pointer text-slate-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-white dark:hover:bg-slate-800" title="上传文件">
                                 <Upload size={14} />
                                 <input 
                                     type="file" 
@@ -484,10 +484,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   {files.length > 0 && (
                       <div className="pl-8 space-y-1 mt-1">
                           {files.map(file => (
-                              <div key={file.id} className="flex items-center justify-between group/file text-xs bg-slate-50 dark:bg-slate-800/50 rounded px-2 py-1 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                              <div key={file.id} className="flex items-center justify-between group/file text-xs bg-[#F6F7F8] dark:bg-slate-800/50 rounded px-2 py-1 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                   <button 
                                       onClick={() => handleFileDownload(file.id, file.name)}
-                                      className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[60%]"
+                                      className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 hover:underline truncate max-w-[60%]"
                                       title={file.name}
                                   >
                                       <FileIcon size={10} /> {file.name}
@@ -535,7 +535,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                 {/* Due Date Picker (Compact) */}
                 <div className="relative flex items-center justify-center p-1.5 md:p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                     <div className="flex items-center gap-1.5 cursor-pointer">
-                        <Calendar size={18} className={`${task.dueDate ? 'text-blue-500' : 'text-slate-300 hover:text-slate-500'}`} />
+                        <Calendar size={18} className={`${task.dueDate ? 'text-rose-500' : 'text-slate-300 hover:text-slate-500'}`} />
                         {task.dueDate && (
                             <span className="text-xs font-mono text-slate-600 dark:text-slate-400 hidden md:inline">
                                 {new Date(task.dueDate).toLocaleDateString(undefined, {month:'numeric', day:'numeric'})}
@@ -576,12 +576,12 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                     : 'opacity-60 hover:opacity-100'
                 } ${
                     s === TaskStatus.PENDING ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' :
-                    s === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                    s === TaskStatus.IN_PROGRESS ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800' :
                     s === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' :
                     s === TaskStatus.BLOCKED ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800' :
                     s === TaskStatus.SKIPPED ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800/50 dark:text-gray-500 dark:border-gray-700' : 
                     s === TaskStatus.EXCEPTION ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
-                    'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800'
+                    'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800'
                 }`}
               >
                 {s === TaskStatus.PENDING ? '待办' :
@@ -604,10 +604,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                          onChange={(e) => setCustomStatusText(e.target.value)}
                          onBlur={saveCustomStatus}
                          onKeyDown={(e) => e.key === 'Enter' && saveCustomStatus()}
-                         className="text-xs px-2 py-1 rounded border border-indigo-300 outline-none w-24 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                         className="text-xs px-2 py-1 rounded border border-rose-300 outline-none w-24 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                        />
                    ) : (
-                       <button onClick={() => setIsEditingCustomStatus(true)} className="p-1 text-slate-300 hover:text-indigo-600">
+                       <button onClick={() => setIsEditingCustomStatus(true)} className="p-1 text-slate-300 hover:text-rose-600">
                            <Edit3 size={12} />
                        </button>
                    )}
@@ -659,7 +659,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   <button 
                     onClick={addStatusUpdate}
                     disabled={!newUpdateContent.trim()}
-                    className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded text-xs font-medium hover:bg-white hover:text-blue-600 disabled:opacity-50 transition-colors shadow-sm"
+                    className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded text-xs font-medium hover:bg-white hover:text-rose-600 disabled:opacity-50 transition-colors shadow-sm"
                   >
                     添加记录
                   </button>
@@ -674,7 +674,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   <div key={update.id} className="relative pl-6 group">
                       <div className="absolute left-[2px] top-1.5 w-[7px] h-[7px] rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900 ring-1 ring-slate-100 dark:ring-slate-800"></div>
                       <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-800 px-1 rounded">{formatTime(update.timestamp)}</span>
+                          <span className="text-[10px] font-mono text-slate-400 bg-[#F6F7F8] dark:bg-slate-800 px-1 rounded">{formatTime(update.timestamp)}</span>
                           <button 
                              onClick={() => deleteStatusUpdate(update.id)}
                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity p-1 cursor-pointer"
@@ -710,7 +710,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            <div className="flex justify-end">
                <button 
                    onClick={() => setShowAIMaterialModal(true)} 
-                   className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 py-1 px-2 bg-indigo-50 dark:bg-indigo-900/20 rounded font-medium transition-colors"
+                   className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1 py-1 px-2 bg-rose-50 dark:bg-rose-900/20 rounded font-medium transition-colors"
                >
                    <Sparkles size={12} /> AI 识别材料
                </button>
@@ -720,13 +720,13 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
            {(referenceMaterials.length > 0 || isTemplateMode) && (
                <div>
                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                        <label className="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
                             <FileText size={14} /> 参考资料 / 模板
                         </label>
                         {isTemplateMode && !isAddingMaterial && (
                             <button 
                                 onClick={() => { setIsAddingMaterial(true); setAddingCategory('REFERENCE'); }} 
-                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1 py-1 px-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded"
                             >
                                 <Plus size={12} /> 添加参考文件
                             </button>
@@ -734,10 +734,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                    </div>
                    {renderMaterialList(referenceMaterials, 'REFERENCE')}
                    {isAddingMaterial && addingCategory === 'REFERENCE' && (
-                       <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+                       <div className="mt-4 flex items-center gap-2 p-2 border border-rose-300 dark:border-rose-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
                           <Circle size={20} className="text-slate-300" />
                           <div className="flex-1">
-                              <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">新增参考资料</div>
+                              <div className="text-[10px] text-rose-500 font-bold uppercase mb-0.5">新增参考资料</div>
                               <input
                                   ref={materialInputRef}
                                   value={newMaterialName}
@@ -751,7 +751,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                               />
                           </div>
                           <div className="flex items-center gap-1">
-                              <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+                              <button onClick={confirmAddMaterial} className="p-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded"><Check size={16}/></button>
                               <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
                           </div>
                       </div>
@@ -768,7 +768,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                     {!isAddingMaterial && (
                         <button 
                             onClick={() => { setIsAddingMaterial(true); setAddingCategory('DELIVERABLE'); }} 
-                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 py-1 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                            className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1 py-1 px-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded"
                         >
                             <Plus size={12} /> 添加产物项
                         </button>
@@ -776,10 +776,10 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                </div>
                {renderMaterialList(deliverableMaterials, 'DELIVERABLE')}
                {isAddingMaterial && addingCategory === 'DELIVERABLE' && (
-                  <div className="mt-4 flex items-center gap-2 p-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
+                  <div className="mt-4 flex items-center gap-2 p-2 border border-rose-300 dark:border-rose-600 rounded-lg bg-white dark:bg-slate-800 shadow-sm animate-fadeIn">
                       <Circle size={20} className="text-slate-300" />
                       <div className="flex-1">
-                          <div className="text-[10px] text-blue-500 font-bold uppercase mb-0.5">新增交付产物</div>
+                          <div className="text-[10px] text-rose-500 font-bold uppercase mb-0.5">新增交付产物</div>
                           <input
                               ref={materialInputRef}
                               value={newMaterialName}
@@ -793,7 +793,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                           />
                       </div>
                       <div className="flex items-center gap-1">
-                          <button onClick={confirmAddMaterial} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"><Check size={16}/></button>
+                          <button onClick={confirmAddMaterial} className="p-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded"><Check size={16}/></button>
                           <button onClick={() => setIsAddingMaterial(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><X size={16}/></button>
                       </div>
                   </div>
@@ -808,7 +808,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
           <div className="absolute inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-30 p-4 backdrop-blur-sm" onClick={() => setShowAIMaterialModal(false)}>
               <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-4 animate-scaleIn" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                      <h3 className="text-sm font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
                           <Sparkles size={16} /> 批量提取材料
                       </h3>
                       <button onClick={() => setShowAIMaterialModal(false)}><X size={16} className="text-slate-400 hover:text-slate-600"/></button>
@@ -817,7 +817,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                       粘贴您的工作说明、清单或邮件片段，AI 将自动识别并添加材料。
                   </p>
                   <textarea 
-                      className="w-full h-32 p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-3"
+                      className="w-full h-32 p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-[#F6F7F8] dark:bg-slate-800 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none mb-3"
                       placeholder="例如：请准备公司章程复印件、股东会决议和清算报告。"
                       value={aiMaterialText}
                       onChange={(e) => setAiMaterialText(e.target.value)}
@@ -825,7 +825,7 @@ const TaskDetailPane: React.FC<Props> = ({ task, matterDueDate, onUpdate, onDele
                   <button 
                       onClick={handleAIAnalyzeMaterials}
                       disabled={!aiMaterialText.trim() || isAnalyzingMaterials}
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
+                      className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
                   >
                       {isAnalyzingMaterials ? <><Sparkles size={14} className="animate-spin"/> 分析中...</> : '开始识别'}
                   </button>

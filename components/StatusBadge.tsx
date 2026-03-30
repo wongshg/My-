@@ -14,7 +14,7 @@ const CONFIG: Record<TaskStatus, { label: string; className: string }> = {
   },
   [TaskStatus.IN_PROGRESS]: { 
       label: '进行中', 
-      className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' 
+      className: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800' 
   },
   [TaskStatus.COMPLETED]: { 
       label: '已完成', 
@@ -34,7 +34,7 @@ const CONFIG: Record<TaskStatus, { label: string; className: string }> = {
   },
   [TaskStatus.OTHER]: { 
       label: '其他', 
-      className: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800' 
+      className: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800' 
   },
 };
 

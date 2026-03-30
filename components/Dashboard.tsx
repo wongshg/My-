@@ -47,11 +47,11 @@ const MatterCard: React.FC<{
   const daysLeft = m.dueDate ? Math.ceil((m.dueDate - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
   // Visual style based on type
-  let containerClass = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 shadow-sm hover:shadow-md";
+  let containerClass = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-500 shadow-sm hover:shadow-md";
   if (type === 'completed') {
     containerClass = "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/50 hover:border-emerald-300 shadow-sm";
   } else if (type === 'archived') {
-    containerClass = "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all";
+    containerClass = "bg-[#F6F7F8] dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all";
   }
 
   return (
@@ -188,7 +188,7 @@ const AttentionGroupCard: React.FC<{
          
          <div 
             onClick={() => onSelectMatter(group.matter.id)}
-            className="p-2 text-center bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer font-medium transition-colors"
+            className="p-2 text-center bg-[#F6F7F8] dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer font-medium transition-colors"
          >
             查看详情
          </div>
@@ -439,14 +439,14 @@ const Dashboard: React.FC<Props> = ({
   const renderMiniList = (list: Matter[], type: 'completed' | 'archived') => {
       if (list.length === 0) return <div className="p-4 text-center text-xs text-slate-400">列表为空</div>;
       return (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl mt-2 border border-slate-100 dark:border-slate-800">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-[#F6F7F8]/50 dark:bg-slate-800/30 rounded-xl mt-2 border border-slate-100 dark:border-slate-800">
               {list.map(m => {
                     const allTasks = m.stages.flatMap(s => s.tasks);
                     const completed = allTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
                     const total = allTasks.length;
                     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
                     return (
-                        <div key={m.id} onClick={() => onSelectMatter(m.id)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
+                        <div key={m.id} onClick={() => onSelectMatter(m.id)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
                             <div className="flex justify-between items-start mb-1">
                                 <div className="flex-1 min-w-0 pr-2">
                                     <div className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">{m.title}</div>
@@ -501,10 +501,10 @@ const Dashboard: React.FC<Props> = ({
       <div className="flex-1 max-w-7xl mx-auto p-6 w-full pb-[calc(2rem+env(safe-area-inset-bottom))]">
             
             {/* AI Module */}
-            <div className="mb-6 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-gradient-to-r from-indigo-50/50 to-white/50 dark:from-indigo-950/20 dark:to-slate-900/50 overflow-hidden shadow-sm transition-all hover:shadow-md">
-                <div className="px-4 py-3 flex items-center justify-between border-b border-indigo-100/50 dark:border-indigo-900/50">
+            <div className="mb-6 rounded-xl border border-rose-100 dark:border-rose-900 bg-gradient-to-r from-rose-50/50 to-white/50 dark:from-rose-950/20 dark:to-slate-900/50 overflow-hidden shadow-sm transition-all hover:shadow-md">
+                <div className="px-4 py-3 flex items-center justify-between border-b border-rose-100/50 dark:border-rose-900/50">
                     <div className="flex items-center gap-2">
-                        <BrainCircuit size={18} className="text-indigo-600 dark:text-indigo-400" />
+                        <BrainCircuit size={18} className="text-rose-600 dark:text-rose-400" />
                         <h2 className="font-bold text-slate-800 dark:text-slate-100">AI 工作态势速览</h2>
                     </div>
                     <div className="flex items-center gap-2">
@@ -512,12 +512,12 @@ const Dashboard: React.FC<Props> = ({
                         {aiHistory.length > 1 && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setShowAiHistory(!showAiHistory); setIsAiExpanded(true); }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${showAiHistory ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white/50 text-slate-500 border-transparent hover:bg-white hover:text-indigo-600'}`}
+                                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${showAiHistory ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-white/50 text-slate-500 border-transparent hover:bg-white hover:text-rose-600'}`}
                             >
                                 <History size={12} /> <span className="hidden sm:inline">历史记录</span>
                             </button>
                         )}
-                        <button onClick={handleAnalyze} disabled={isAnalyzing} className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors disabled:opacity-50"><RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} /></button>
+                        <button onClick={handleAnalyze} disabled={isAnalyzing} className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-lg transition-colors disabled:opacity-50"><RefreshCw size={14} className={isAnalyzing ? 'animate-spin' : ''} /></button>
                         <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">{isAiExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</button>
                     </div>
                 </div>
@@ -531,7 +531,7 @@ const Dashboard: React.FC<Props> = ({
                                 {aiHistory.map((hist, idx) => (
                                     <div key={hist.timestamp} 
                                          onClick={() => handleRestoreHistory(hist)}
-                                         className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors flex justify-between items-center group"
+                                         className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:border-rose-300 dark:hover:border-rose-500 transition-colors flex justify-between items-center group"
                                     >
                                         <div className="flex-1 min-w-0 pr-4">
                                             <div className="flex items-center gap-2 mb-1">
@@ -540,7 +540,7 @@ const Dashboard: React.FC<Props> = ({
                                             </div>
                                             <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{hist.overview}</p>
                                         </div>
-                                        <ChevronDown size={14} className="text-slate-300 group-hover:text-indigo-500 -rotate-90" />
+                                        <ChevronDown size={14} className="text-slate-300 group-hover:text-rose-500 -rotate-90" />
                                     </div>
                                 ))}
                             </div>
@@ -548,7 +548,7 @@ const Dashboard: React.FC<Props> = ({
                     ) : aiResult ? (
                         <div className="p-0">
                              {/* Overview Grid - Refactored to 4 Cols Row on Large Screens */}
-                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-indigo-100 dark:divide-indigo-900/50">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-rose-100 dark:divide-rose-900/50">
                                  <div className="p-4 lg:p-5">
                                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">整体情况</h4>
                                      <p className="text-slate-700 dark:text-slate-200 leading-relaxed text-sm font-medium">{aiResult.overview}</p>
@@ -575,8 +575,8 @@ const Dashboard: React.FC<Props> = ({
                              
                              {/* Action Plan Section - Interactive & Compact & Single Column */}
                              {aiResult.actionPlan && (
-                                <div className="border-t border-indigo-100 dark:border-indigo-900 p-4 lg:px-5 bg-white/40 dark:bg-white/5">
-                                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <div className="border-t border-rose-100 dark:border-rose-900 p-4 lg:px-5 bg-white/40 dark:bg-white/5">
+                                    <h4 className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                         <ListTodo size={16}/> 建议工作任务计划 (近期)
                                     </h4>
                                     <div className="grid grid-cols-1 gap-2">
@@ -592,19 +592,19 @@ const Dashboard: React.FC<Props> = ({
                                                     className={`
                                                         flex items-start gap-3 p-2 rounded-lg transition-all cursor-pointer group border
                                                         ${isCompleted 
-                                                            ? 'bg-slate-50 dark:bg-slate-800/30 border-transparent opacity-60' 
-                                                            : 'bg-white dark:bg-slate-900 border-indigo-50 dark:border-indigo-900/30 hover:border-indigo-200 shadow-sm hover:shadow-md'
+                                                            ? 'bg-[#F6F7F8] dark:bg-slate-800/30 border-transparent opacity-60' 
+                                                            : 'bg-white dark:bg-slate-900 border-rose-50 dark:border-rose-900/30 hover:border-rose-200 shadow-sm hover:shadow-md'
                                                         }
                                                     `}
                                                 >
-                                                    <div className={`mt-0.5 shrink-0 transition-colors ${isCompleted ? 'text-emerald-500' : 'text-indigo-300 group-hover:text-indigo-500'}`}>
+                                                    <div className={`mt-0.5 shrink-0 transition-colors ${isCompleted ? 'text-emerald-500' : 'text-rose-300 group-hover:text-rose-500'}`}>
                                                         {isCompleted ? <CheckCircle2 size={16} className="fill-emerald-100 dark:fill-emerald-900"/> : <Circle size={16} />}
                                                     </div>
                                                     
                                                     <div className={`text-sm leading-snug transition-all flex-1 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
                                                         {match ? (
                                                             <>
-                                                                <span className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded px-1.5 py-0.5 text-xs font-bold mr-2 mb-1 lg:mb-0">
+                                                                <span className="inline-block bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 rounded px-1.5 py-0.5 text-xs font-bold mr-2 mb-1 lg:mb-0">
                                                                     {match[1]}
                                                                 </span>
                                                                 {match[2]}
@@ -621,7 +621,7 @@ const Dashboard: React.FC<Props> = ({
                                 </div>
                              )}
 
-                             <div className="text-center py-2 bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-50 dark:border-indigo-900/30">
+                             <div className="text-center py-2 bg-rose-50/30 dark:bg-rose-900/10 border-t border-rose-50 dark:border-rose-900/30">
                                  <span className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                                      <Sparkles size={10} /> AI 辅助分析，仅用于工作态势参考
                                  </span>
@@ -634,19 +634,19 @@ const Dashboard: React.FC<Props> = ({
             {/* Stats */}
             <div className="mb-8 mt-4">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-stretch">
-                     <DetailedStatCard label="正在推进" matters={inProgressMatters} count={statInProgressMatters} icon={Activity} color="bg-blue-500" />
+                     <DetailedStatCard label="正在推进" matters={inProgressMatters} count={statInProgressMatters} icon={Activity} color="bg-rose-500" />
                      <DetailedStatCard label="急需关注" matters={attentionGroups.map(g => g.matter)} count={statUrgentMatters} icon={AlertCircle} color="bg-amber-500" />
                  </div>
                  <div className="flex flex-col gap-2">
                      <div className="bg-transparent">
-                         <button onClick={() => setShowCompleted(!showCompleted)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showCompleted ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
+                         <button onClick={() => setShowCompleted(!showCompleted)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showCompleted ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-[#F6F7F8] dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
                             <div className="flex items-center gap-2"><div className={`p-1 rounded-full ${showCompleted ? 'bg-emerald-200 dark:bg-emerald-800' : 'bg-slate-100 dark:bg-slate-700'}`}><CheckSquare size={14} className={showCompleted ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'} /></div><span className="font-medium">已完成事项</span><span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statCompletedMatters}</span></div>
                             {showCompleted ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                          </button>
                          <div className={`overflow-hidden transition-all duration-300 ease-out ${showCompleted ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>{renderMiniList(completedActiveMatters, 'completed')}</div>
                      </div>
                      <div className="bg-transparent">
-                         <button onClick={() => setShowArchived(!showArchived)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showArchived ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
+                         <button onClick={() => setShowArchived(!showArchived)} className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all text-sm ${showArchived ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-[#F6F7F8] dark:hover:bg-slate-700/50 hover:border-slate-300'}`}>
                             <div className="flex items-center gap-2"><div className={`p-1 rounded-full ${showArchived ? 'bg-slate-300 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-700'}`}><Archive size={14} className={showArchived ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} /></div><span className="font-medium">已归档事项</span><span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full text-xs font-bold">{statArchivedMatters}</span></div>
                             {showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                          </button>
@@ -658,27 +658,27 @@ const Dashboard: React.FC<Props> = ({
             <div className="space-y-12">
                 <section>
                     <div className="flex items-center gap-2 mb-4"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">急需关注</h2><span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold">{attentionGroups.length}</span></div>
-                    {attentionGroups.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2"><CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{attentionGroups.map((group, idx) => (<AttentionGroupCard key={group.matter.id} group={group} onSelectMatter={onSelectMatter} onJumpToTask={onJumpToTask} onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)} />))}</div>)}
+                    {attentionGroups.length === 0 ? (<div className="text-sm text-slate-400 pl-4 py-6 bg-[#F6F7F8]/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center gap-2"><CheckCircle size={16} /> 暂无受阻或临期事项，一切正常。</div>) : (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">{attentionGroups.map((group, idx) => (<AttentionGroupCard key={group.matter.id} group={group} onSelectMatter={onSelectMatter} onJumpToTask={onJumpToTask} onDismissTask={(taskId) => handleDismissTask(group.matter, taskId)} />))}</div>)}
                 </section>
 
                 <section>
                     <div className="flex items-center gap-2 mb-4">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
                         <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">进行中事项</h2>
                         <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">{inProgressMatters.length}</span>
                     </div>
                     
                     {inProgressMatters.length === 0 ? (
-                        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <div className="text-center py-12 bg-[#F6F7F8] dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                              <p className="text-slate-400 text-sm mb-2">暂无进行中的事项</p>
-                             <button onClick={onNewMatter} className="text-blue-600 dark:text-blue-400 text-xs hover:underline">创建一个新事项</button>
+                             <button onClick={onNewMatter} className="text-rose-600 dark:text-rose-400 text-xs hover:underline">创建一个新事项</button>
                         </div>
                     ) : (
                         <div className="space-y-8">
                             {Object.entries(groupedInProgressMatters).map(([type, matters]) => (
                                 <div key={type}>
                                     <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                        <div className="w-1 h-3 bg-blue-300 dark:bg-blue-700 rounded-full"></div>
+                                        <div className="w-1 h-3 bg-rose-300 dark:bg-rose-700 rounded-full"></div>
                                         {type} ({matters.length})
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

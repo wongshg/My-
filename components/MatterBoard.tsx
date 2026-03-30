@@ -495,7 +495,7 @@ const MatterBoard: React.FC<Props> = ({
   };
 
   const renderMobileStageSelector = () => (
-      <div className="flex overflow-x-auto gap-2 p-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 scrollbar-hide shrink-0 shadow-sm">
+      <div className="flex overflow-x-auto gap-2 p-2 bg-[#F6F7F8] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 scrollbar-hide shrink-0 shadow-sm">
           {matter.stages.map((stage, idx) => {
               const isSelected = selectedStageId === stage.id;
               const isEditing = editingStageId === stage.id;
@@ -510,7 +510,7 @@ const MatterBoard: React.FC<Props> = ({
                           onChange={(e) => setEditingStageName(e.target.value)}
                           onBlur={saveStageName}
                           onKeyDown={(e) => e.key === 'Enter' && saveStageName()}
-                          className="px-3 py-1.5 rounded-full text-xs font-medium border border-blue-600 bg-white text-slate-800 outline-none min-w-[100px]"
+                          className="px-3 py-1.5 rounded-full text-xs font-medium border border-rose-600 bg-white text-slate-800 outline-none min-w-[100px]"
                       />
                   );
               }
@@ -522,7 +522,7 @@ const MatterBoard: React.FC<Props> = ({
                       className={`
                           whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors border flex items-center gap-1.5
                           ${isSelected 
-                              ? 'bg-blue-600 text-white border-blue-600' 
+                              ? 'bg-rose-600 text-white border-rose-600' 
                               : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}
                       `}
                   >
@@ -536,7 +536,7 @@ const MatterBoard: React.FC<Props> = ({
                                 e.stopPropagation();
                                 startEditingStage(stage);
                             }}
-                            className="bg-blue-500 rounded-full p-0.5 hover:bg-blue-400"
+                            className="bg-rose-500 rounded-full p-0.5 hover:bg-rose-400"
                           >
                              <Edit2 size={10} />
                           </span>
@@ -559,7 +559,7 @@ const MatterBoard: React.FC<Props> = ({
                     if (e.key === 'Escape') setIsAddingStage(false);
                 }}
                 placeholder="新阶段名称"
-                className="px-3 py-1.5 rounded-full text-xs font-medium border border-blue-400 bg-white outline-none min-w-[100px]"
+                className="px-3 py-1.5 rounded-full text-xs font-medium border border-rose-400 bg-white outline-none min-w-[100px]"
              />
           ) : (
              <button onClick={() => setIsAddingStage(true)} className="px-2 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500"><Plus size={14}/></button>
@@ -596,7 +596,7 @@ const MatterBoard: React.FC<Props> = ({
                 <div className="flex flex-col w-full max-w-lg">
                     <input 
                       autoFocus
-                      className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
+                      className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-rose-500 bg-transparent outline-none w-full"
                       value={editTitleVal}
                       onChange={(e) => setEditTitleVal(e.target.value)}
                       onBlur={() => { if(!isTemplateMode) saveHeaderInfo() }} 
@@ -605,7 +605,7 @@ const MatterBoard: React.FC<Props> = ({
                     />
                     {isTemplateMode && (
                          <input 
-                           className="text-xs text-slate-500 dark:text-slate-400 bg-transparent outline-none mt-1 border-b border-slate-200 dark:border-slate-700 placeholder-slate-300 focus:border-blue-400"
+                           className="text-xs text-slate-500 dark:text-slate-400 bg-transparent outline-none mt-1 border-b border-slate-200 dark:border-slate-700 placeholder-slate-300 focus:border-rose-400"
                            value={editDescVal}
                            onChange={(e) => setEditDescVal(e.target.value)}
                            onKeyDown={(e) => e.key === 'Enter' && saveHeaderInfo()}
@@ -644,7 +644,7 @@ const MatterBoard: React.FC<Props> = ({
              {isTemplateMode && isEditingTitle && (
                 <button 
                   onClick={saveHeaderInfo}
-                  className="p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200"
+                  className="p-1.5 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded hover:bg-rose-200"
                 >
                     <Check size={16} />
                 </button>
@@ -652,15 +652,15 @@ const MatterBoard: React.FC<Props> = ({
 
              {!isTemplateMode && (
                 <div className="hidden md:block relative z-50">
-                    <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-md">
+                    <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-[#F6F7F8] dark:hover:bg-slate-800 px-3 py-1.5 rounded-md">
                         <Download size={14} /> 下载
                     </button>
                     {showExportMenu && (
                         <div className="absolute right-0 top-10 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 z-50 flex flex-col py-1 animate-fadeIn">
-                             <button onClick={() => exportMaterials('ALL')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">全部下载</button>
+                             <button onClick={() => exportMaterials('ALL')} className="text-left px-4 py-2 text-xs hover:bg-[#F6F7F8] dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">全部下载</button>
                              <div className="h-[1px] bg-slate-100 dark:bg-slate-700 mx-2"></div>
-                             <button onClick={() => exportMaterials('REFERENCE')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅参考模板</button>
-                             <button onClick={() => exportMaterials('DELIVERABLE')} className="text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅交付产物</button>
+                             <button onClick={() => exportMaterials('REFERENCE')} className="text-left px-4 py-2 text-xs hover:bg-[#F6F7F8] dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅参考模板</button>
+                             <button onClick={() => exportMaterials('DELIVERABLE')} className="text-left px-4 py-2 text-xs hover:bg-[#F6F7F8] dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300">仅交付产物</button>
                         </div>
                     )}
                 </div>
@@ -669,12 +669,12 @@ const MatterBoard: React.FC<Props> = ({
             {isTemplateMode ? (
                 <button 
                   onClick={() => onSaveTemplate(matter)} 
-                  className="flex items-center gap-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md shadow-sm transition-colors"
+                  className="flex items-center gap-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-md shadow-sm transition-colors"
                 >
                     <Save size={14} /> 保存修改
                 </button>
             ) : (
-                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-[#F6F7F8] dark:hover:bg-slate-800 rounded-md">
                     另存模板
                 </button>
             )}
@@ -702,9 +702,9 @@ const MatterBoard: React.FC<Props> = ({
         <div className="flex w-full h-full pt-0 relative">
             
             {/* Col 1: Stages */}
-            <div style={{ width: col1Width }} className="bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden shrink-0">
+            <div style={{ width: col1Width }} className="bg-[#F6F7F8] dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden shrink-0">
                 <div className="h-full overflow-y-auto pt-16">
-                    <div className="sticky top-0 z-10 h-14 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur px-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50">
+                    <div className="sticky top-0 z-10 h-14 bg-[#F6F7F8]/80 dark:bg-slate-900/80 backdrop-blur px-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50">
                         <span className="font-bold text-xs text-slate-400 uppercase tracking-wider">阶段</span>
                         <button onClick={() => setIsAddingStage(true)}><Plus size={16}/></button>
                     </div>
@@ -722,8 +722,8 @@ const MatterBoard: React.FC<Props> = ({
                                     onDrop={(e) => handleDrop(e, 'STAGE', stage.id)}
                                     onClick={() => { setSelectedStageId(stage.id); setSelectedTaskId(null); }} 
                                     className={`group p-2.5 rounded cursor-pointer text-sm font-medium relative flex items-center justify-between transition-all border
-                                        ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600 border-transparent' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
-                                        ${dragItem?.id === stage.id ? 'opacity-50 border-dashed border-blue-400' : ''}
+                                        ${selectedStageId === stage.id ? 'bg-white dark:bg-slate-800 shadow-sm text-rose-600 border-transparent' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+                                        ${dragItem?.id === stage.id ? 'opacity-50 border-dashed border-rose-400' : ''}
                                     `}
                                 >
                                     <div className="flex-1 min-w-0 truncate flex items-center gap-2">
@@ -732,7 +732,7 @@ const MatterBoard: React.FC<Props> = ({
                                         {isEditing ? (
                                             <input 
                                                 autoFocus
-                                                className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100"
+                                                className="w-full bg-white dark:bg-slate-700 border border-rose-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100"
                                                 value={editingStageName}
                                                 onChange={(e) => setEditingStageName(e.target.value)}
                                                 onBlur={saveStageName}
@@ -752,7 +752,7 @@ const MatterBoard: React.FC<Props> = ({
                                     </div>
                                     {!isEditing && (
                                         <div className="hidden group-hover:flex items-center gap-1 bg-inherit">
-                                            <button onClick={(e) => { e.stopPropagation(); startEditingStage(stage); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
+                                            <button onClick={(e) => { e.stopPropagation(); startEditingStage(stage); }} className="p-1 hover:text-rose-500"><Edit2 size={12}/></button>
                                             <button onClick={(e) => { e.stopPropagation(); deleteStage(stage.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
                                         </div>
                                     )}
@@ -763,7 +763,7 @@ const MatterBoard: React.FC<Props> = ({
                             <div className="p-2">
                                 <input 
                                     ref={newStageInputRef}
-                                    className="w-full bg-white dark:bg-slate-800 border border-blue-400 rounded px-2 py-1 text-sm outline-none"
+                                    className="w-full bg-white dark:bg-slate-800 border border-rose-400 rounded px-2 py-1 text-sm outline-none"
                                     placeholder="输入阶段名称"
                                     value={newStageName}
                                     onChange={(e) => setNewStageName(e.target.value)}
@@ -800,8 +800,8 @@ const MatterBoard: React.FC<Props> = ({
                                     onDrop={(e) => handleDrop(e, 'TASK', task.id, activeStage.id)}
                                     onClick={() => setSelectedTaskId(task.id)} 
                                     className={`group p-4 border-b border-slate-50 dark:border-slate-700 cursor-pointer relative transition-all flex items-start gap-2
-                                        ${selectedTaskId === task.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-l-4 border-l-transparent'}
-                                        ${dragItem?.id === task.id ? 'opacity-50 bg-blue-50' : ''}
+                                        ${selectedTaskId === task.id ? 'bg-rose-50/50 dark:bg-rose-900/20 border-l-4 border-l-rose-500' : 'hover:bg-[#F6F7F8] dark:hover:bg-slate-700 border-l-4 border-l-transparent'}
+                                        ${dragItem?.id === task.id ? 'opacity-50 bg-rose-50' : ''}
                                     `}
                                 >
                                     <div className="mt-1 shrink-0">
@@ -812,7 +812,7 @@ const MatterBoard: React.FC<Props> = ({
                                             <StatusBadge status={task.status} />
                                             {!isEditing && (
                                                 <div className="hidden group-hover:flex items-center gap-1 shrink-0">
-                                                    <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 hover:text-blue-500"><Edit2 size={12}/></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); startEditingTask(task); }} className="p-1 hover:text-rose-500"><Edit2 size={12}/></button>
                                                     <button onClick={(e) => { e.stopPropagation(); deleteTask(activeStage!.id, task.id); }} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
                                                 </div>
                                             )}
@@ -820,7 +820,7 @@ const MatterBoard: React.FC<Props> = ({
                                         {isEditing ? (
                                             <input
                                                 autoFocus
-                                                className="w-full bg-white dark:bg-slate-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100 text-sm font-medium"
+                                                className="w-full bg-white dark:bg-slate-700 border border-rose-400 rounded px-1 py-0.5 outline-none text-slate-800 dark:text-slate-100 text-sm font-medium"
                                                 value={editingTaskName}
                                                 onChange={(e) => setEditingTaskName(e.target.value)}
                                                 onBlur={saveTaskName}
@@ -882,7 +882,7 @@ const MatterBoard: React.FC<Props> = ({
              {isEditingTitle ? (
                 <input 
                   autoFocus
-                  className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-blue-500 bg-transparent outline-none w-full"
+                  className="font-bold text-base text-slate-800 dark:text-slate-100 border-b border-rose-500 bg-transparent outline-none w-full"
                   value={editTitleVal}
                   onChange={(e) => setEditTitleVal(e.target.value)}
                   onBlur={saveHeaderInfo}
@@ -893,7 +893,7 @@ const MatterBoard: React.FC<Props> = ({
                   <h1 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base cursor-pointer" onClick={() => setIsEditingTitle(true)}>{matter.title}</h1>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       {isTemplateMode ? (
-                          <span className="text-blue-500 font-medium">模板编辑模式</span>
+                          <span className="text-rose-500 font-medium">模板编辑模式</span>
                       ) : (
                           <div className="relative group flex items-center gap-1">
                               <Clock size={10} />
@@ -919,12 +919,12 @@ const MatterBoard: React.FC<Props> = ({
             {isTemplateMode ? (
                 <button 
                   onClick={() => onSaveTemplate(matter)} 
-                  className="p-2 text-blue-600 dark:text-blue-400 font-bold text-xs bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                  className="p-2 text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-50 dark:bg-rose-900/20 rounded-lg"
                 >
                     <Save size={18} />
                 </button>
             ) : (
-                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md">
+                <button onClick={() => onSaveTemplate(matter)} className="hidden md:block text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 hover:bg-[#F6F7F8] dark:hover:bg-slate-800 rounded-md">
                     另存模板
                 </button>
             )}
@@ -947,7 +947,7 @@ const MatterBoard: React.FC<Props> = ({
                     </button>
                 </div>
 
-                <div className="p-2 space-y-2 bg-slate-50/30 dark:bg-slate-900 flex-1">
+                <div className="p-2 space-y-2 bg-[#F6F7F8]/30 dark:bg-slate-900 flex-1">
                     {activeStage?.tasks.length === 0 && <div className="text-center py-8 text-slate-400 text-xs">暂无任务</div>}
                     {activeStage?.tasks.map((task) => (
                         <div 
@@ -955,7 +955,7 @@ const MatterBoard: React.FC<Props> = ({
                             onClick={() => setSelectedTaskId(task.id)}
                             className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm flex items-start gap-3 active:scale-[0.98] transition-transform"
                         >
-                            <div className={`w-1 self-stretch rounded-full ${task.status === TaskStatus.COMPLETED ? 'bg-emerald-400' : task.status === TaskStatus.BLOCKED ? 'bg-amber-400' : 'bg-blue-400'}`}></div>
+                            <div className={`w-1 self-stretch rounded-full ${task.status === TaskStatus.COMPLETED ? 'bg-emerald-400' : task.status === TaskStatus.BLOCKED ? 'bg-amber-400' : 'bg-rose-400'}`}></div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">{task.title}</div>
@@ -971,7 +971,7 @@ const MatterBoard: React.FC<Props> = ({
         {/* Resize Handle */}
         <div 
             ref={resizeRef}
-            className="shrink-0 z-40 h-5 bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shadow-sm"
+            className="shrink-0 z-40 h-5 bg-[#F6F7F8] dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-row-resize touch-none shadow-sm"
             onMouseDown={handleMobileResizeStart}
             onTouchStart={handleMobileResizeStart}
         >

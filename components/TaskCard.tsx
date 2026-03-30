@@ -42,7 +42,7 @@ const TaskCard: React.FC<Props> = ({ task, onUpdate }) => {
       case TaskStatus.EXCEPTION: return 'border-purple-300 ring-1 ring-purple-100 bg-purple-50/30';
       case TaskStatus.COMPLETED: return 'border-emerald-200 opacity-80';
       case TaskStatus.SKIPPED: return 'border-slate-100 opacity-60';
-      default: return 'border-slate-200 hover:border-blue-300 bg-white';
+      default: return 'border-slate-200 hover:border-rose-300 bg-white';
     }
   };
 
@@ -87,7 +87,7 @@ const TaskCard: React.FC<Props> = ({ task, onUpdate }) => {
                 className={`text-xs py-1 rounded border transition-colors ${
                   task.status === s
                     ? 'bg-slate-700 text-white border-slate-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-[#F6F7F8]'
                 }`}
               >
                 {s === TaskStatus.PENDING ? '待办' :
@@ -101,7 +101,7 @@ const TaskCard: React.FC<Props> = ({ task, onUpdate }) => {
 
           {/* Description */}
           {task.description && (
-            <div className="text-xs text-slate-500 mb-3 bg-slate-50 p-2 rounded border border-slate-100">
+            <div className="text-xs text-slate-500 mb-3 bg-[#F6F7F8] p-2 rounded border border-slate-100">
               {task.description}
             </div>
           )}
@@ -112,14 +112,14 @@ const TaskCard: React.FC<Props> = ({ task, onUpdate }) => {
               value={task.statusNote}
               onChange={handleNoteChange}
               placeholder="记录进展、卡点或例外原因..."
-              className="w-full p-2 rounded text-xs border border-slate-200 focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white"
+              className="w-full p-2 rounded text-xs border border-slate-200 focus:ring-1 focus:ring-rose-500 outline-none resize-none bg-white"
               rows={3}
             />
           </div>
 
           {/* Materials */}
           {task.materials.length > 0 && (
-            <div className="bg-slate-50 rounded p-2 border border-slate-100">
+            <div className="bg-[#F6F7F8] rounded p-2 border border-slate-100">
               <div className="text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
                 <FileText size={10} /> 附件/材料
               </div>
